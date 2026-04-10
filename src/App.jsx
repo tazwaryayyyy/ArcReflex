@@ -1,83 +1,131 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
+// ── Precision reticle cursor ─────────────────────────────────────────────────
 function CustomCursor() {
-  const dotRef  = useRef(null);
-  const ringRef = useRef(null);
-  const mouse   = useRef({ x: -100, y: -100 });
-  const ring    = useRef({ x: -100, y: -100 });
-  const rafRef  = useRef(null);
-  const [isHovering, setIsHovering] = useState(false);
+  const ref   = useRef(null);
+  const [hot, setHot] = useState(false);
 
   useEffect(() => {
     const onMove = (e) => {
-      mouse.current = { x: e.clientX, y: e.clientY };
-      if (dotRef.current) {
-        dotRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+      if (ref.current) {
+        ref.current.style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
       }
-      const target = e.target;
-      const clickable = target.closest("button, input, a, [role='button']");
-      setIsHovering(!!clickable);
+      setHot(!!e.target.closest("button,input,a,[role='button']"));
     };
-
-    const animate = () => {
-      const ease = 0.13;
-      ring.current.x += (mouse.current.x - ring.current.x) * ease;
-      ring.current.y += (mouse.current.y - ring.current.y) * ease;
-      if (ringRef.current) {
-        ringRef.current.style.transform = `translate(${ring.current.x}px, ${ring.current.y}px)`;
-      }
-      rafRef.current = requestAnimationFrame(animate);
-    };
-
     window.addEventListener("mousemove", onMove);
-    rafRef.current = requestAnimationFrame(animate);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      cancelAnimationFrame(rafRef.current);
-    };
+    return () => window.removeEventListener("mousemove", onMove);
   }, []);
 
-  const ringSize = isHovering ? 44 : 32;
+  const c  = hot ? COLORS.green  : COLORS.violet;
+  const c2 = hot ? COLORS.violet : COLORS.blue;
+  const sc = hot ? 1.25 : 1;
 
   return (
-    <>
-      {/* Dot — snaps instantly */}
-      <div ref={dotRef} style={{
-        position:"fixed", top:0, left:0, pointerEvents:"none", zIndex:99999,
-        width:6, height:6, borderRadius:"50%",
-        background:COLORS.violet,
-        boxShadow:`0 0 8px ${COLORS.violet}, 0 0 16px ${COLORS.violet}88`,
-        marginLeft:-3, marginTop:-3,
-        transition:"width 0.2s, height 0.2s",
-        willChange:"transform",
-      }} />
-      {/* Ring — lags behind */}
-      <div ref={ringRef} style={{
-        position:"fixed", top:0, left:0, pointerEvents:"none", zIndex:99998,
-        width:ringSize, height:ringSize, borderRadius:"50%",
-        border:`1.5px solid ${isHovering ? COLORS.green : COLORS.violet}88`,
-        boxShadow:`0 0 12px ${COLORS.violet}33`,
-        marginLeft:-(ringSize/2), marginTop:-(ringSize/2),
-        transition:"width 0.25s ease, height 0.25s ease, margin 0.25s ease, border-color 0.25s ease",
-        willChange:"transform",
-      }} />
-    </>
+    <div ref={ref} style={{
+      position:"fixed", top:0, left:0, pointerEvents:"none", zIndex:99999,
+      width:0, height:0, willChange:"transform",
+    }}>
+      <svg
+        width={44} height={44}
+        viewBox="0 0 44 44"
+        style={{
+          position:"absolute",
+          top:-22, left:-22,
+          transform:`scale(${sc}) rotate(${hot?45:0}deg)`,
+          transition:"transform 0.2s cubic-bezier(.23,1,.32,1)",
+          overflow:"visible",
+        }}
+      >
+        {/* Outer dashed ring */}
+        <circle cx="22" cy="22" r="18"
+          fill="none" stroke={c2} strokeWidth="0.8"
+          strokeDasharray="4 3" opacity="0.45"
+        />
+        {/* Inner solid ring */}
+        <circle cx="22" cy="22" r="10"
+          fill="none" stroke={c} strokeWidth="1"
+          opacity="0.6"
+        />
+        {/* Center dot */}
+        <circle cx="22" cy="22" r="1.8" fill={c} />
+        {/* N tick */}
+        <line x1="22" y1="2"  x2="22" y2="10" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
+        {/* S tick */}
+        <line x1="22" y1="34" x2="22" y2="42" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
+        {/* W tick */}
+        <line x1="2"  y1="22" x2="10" y2="22" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
+        {/* E tick */}
+        <line x1="34" y1="22" x2="42" y2="22" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
+        {/* Corner accent marks */}
+        <line x1="33" y1="11" x2="36" y2="8"  stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+        <line x1="11" y1="11" x2="8"  y2="8"  stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+        <line x1="33" y1="33" x2="36" y2="36" stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+        <line x1="11" y1="33" x2="8"  y2="36" stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+      </svg>
+    </div>
+  );
+}
+
+// ── Magnetic button ───────────────────────────────────────────────────────────
+function MagneticButton({ children, onClick, disabled, style }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onMove = (e) => {
+      if (disabled) return;
+      const r    = el.getBoundingClientRect();
+      const cx   = r.left + r.width  / 2;
+      const cy   = r.top  + r.height / 2;
+      const dx   = e.clientX - cx;
+      const dy   = e.clientY - cy;
+      const dist = Math.hypot(dx, dy);
+      const max  = 90;
+      if (dist < max) {
+        const pull = (1 - dist / max) * 0.38;
+        el.style.transform = `translate(${dx*pull}px,${dy*pull}px)`;
+      } else {
+        el.style.transform = "translate(0px,0px)";
+      }
+    };
+
+    const onLeave = () => { el.style.transform = "translate(0px,0px)"; };
+
+    window.addEventListener("mousemove", onMove);
+    el.addEventListener("mouseleave", onLeave);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      el.removeEventListener("mouseleave", onLeave);
+    };
+  }, [disabled]);
+
+  return (
+    <button
+      ref={ref}
+      onClick={onClick}
+      disabled={disabled}
+      style={{ ...style, transition:"transform 0.35s cubic-bezier(0.23,1,0.32,1)", willChange:"transform" }}
+    >
+      {children}
+    </button>
   );
 }
 
 const COLORS = {
-  bg:      "#05050D",
-  surface: "#0A0A16",
-  card:    "#0D0D1F",
-  border:  "#161630",
-  violet:  "#8B5CF6",
-  green:   "#00D97E",
-  amber:   "#F5A623",
-  blue:    "#38BDF8",
-  red:     "#F43F5E",
-  purple:  "#A78BFA",
-  text:    "#E2E8F0",
-  muted:   "#64748B",
+  bg:      "#030405",   // near-pure black, cold tint
+  surface: "#06080F",   // dark navy-black
+  card:    "#0A0D18",   // card surfaces
+  border:  "#111828",   // subtle borders
+  violet:  "#FF6B00",   // electric orange — Orchestrator
+  green:   "#00D97E",   // mint green — Search, settled
+  amber:   "#FFD60A",   // electric yellow — Filter agents
+  blue:    "#2DD4F7",   // electric cyan — Quality Oracle
+  red:     "#FF2C52",   // vivid red — errors, withheld
+  purple:  "#C084FC",   // fuchsia — replacement agents
+  text:    "#EFF1F8",   // cool near-white
+  muted:   "#4E6278",   // steel gray
 };
 
 const EDGES = {
@@ -618,34 +666,34 @@ export default function App() {
                         opacity:phase==="running" ? 0.5 : 1,
                       }}
                     />
-                    <button
+                    <MagneticButton
                       onClick={runSimulation}
                       disabled={phase === "running"}
                       style={{
                         background:COLORS.violet, color:"#fff",
                         fontFamily:"'Sora',sans-serif", fontSize:13, fontWeight:600,
-                        padding:"10px 20px", borderRadius:6, border:"none", cursor:"pointer",
+                        padding:"10px 20px", borderRadius:6, border:"none", cursor:"none",
                         opacity:phase==="running" ? 0.6 : 1,
                         whiteSpace:"nowrap",
                       }}
                     >
                       {phase === "running" ? "RUNNING..." : phase === "complete" ? "RUN AGAIN" : "SUBMIT TASK"}
-                    </button>
+                    </MagneticButton>
                   </div>
                   {phase === "complete" && (
                     <div style={{ marginTop:8 }}>
-                      <button
+                      <MagneticButton
                         onClick={runConcurrent}
                         disabled={concurrent}
                         style={{
-                          background:COLORS.amber, color:"#05050D",
+                          background:COLORS.amber, color:"#030405",
                           fontFamily:"'Sora',sans-serif", fontSize:13, fontWeight:600,
-                          padding:"10px 20px", borderRadius:6, border:"none", cursor:"pointer",
+                          padding:"10px 20px", borderRadius:6, border:"none", cursor:"none",
                           opacity:concurrent ? 0.5 : 1,
                         }}
                       >
                         FIRE 2 CONCURRENT
-                      </button>
+                      </MagneticButton>
                     </div>
                   )}
                 </div>
