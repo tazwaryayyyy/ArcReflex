@@ -1,0 +1,152 @@
+version: "3.9"
+
+# ArcReflex — Docker Compose
+# Runs all 5 services with a single: docker compose up
+#
+# Port map:
+#   8000 — Orchestrator (WebSocket /ws, POST /task)
+#   8001 — Search Agent A
+#   8002 — Search Agent B
+#   8003 — Filter Agent A
+#   8004 — Filter Agent B
+#   8005 — Fact-Check Agent (x402-gated)
+
+x-common-env: &common-env
+  ARC_RPC_URL:      ${ARC_RPC_URL:-https://rpc.arc.circle.com}
+  ARC_CHAIN_ID:     ${ARC_CHAIN_ID:-1234567}
+  USDC_ADDRESS:     ${USDC_ADDRESS:-0x...}
+  CIRCLE_API_KEY:   ${CIRCLE_API_KEY:-}
+  CIRCLE_GATEWAY_URL: ${CIRCLE_GATEWAY_URL:-https://api.circle.com/v1/w3s}
+
+services:
+
+  # ── Orchestrator ────────────────────────────────────────────────────────────
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    command: uvicorn orchestrator.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *common-env
+      ORCHESTRATOR_WALLET:  ${ORCHESTRATOR_WALLET:-0xORCHESTRATOR}
+      ORCHESTRATOR_PRIVKEY: ${ORCHESTRATOR_PRIVKEY:-0xaaaa...}
+      SEARCH_A_WALLET:      ${SEARCH_A_WALLET:-0xSEARCH_A}
+      SEARCH_B_WALLET:      ${SEARCH_B_WALLET:-0xSEARCH_B}
+      FILTER_A_WALLET:      ${FILTER_A_WALLET:-0xFILTER_A}
+      FILTER_B_WALLET:      ${FILTER_B_WALLET:-0xFILTER_B}
+      AGENT_REGISTRY_ADDR:  ${AGENT_REGISTRY_ADDR:-0x...}
+    depends_on:
+      - search_a
+      - search_b
+      - filter_a
+      - filter_b
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  # ── Search Agent A ──────────────────────────────────────────────────────────
+  search_a:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    command: uvicorn agents.search_a.main:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - "8001:8001"
+    environment:
+      <<: *common-env
+      SEARCH_A_WALLET: ${SEARCH_A_WALLET:-0xSEARCH_A}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  # ── Search Agent B ──────────────────────────────────────────────────────────
+  search_b:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    command: uvicorn agents.search_b.main:app --host 0.0.0.0 --port 8002 --reload
+    ports:
+      - "8002:8002"
+    environment:
+      <<: *common-env
+      SEARCH_B_WALLET: ${SEARCH_B_WALLET:-0xSEARCH_B}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  # ── Filter Agent A ──────────────────────────────────────────────────────────
+  filter_a:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    command: uvicorn agents.filter_a.main:app --host 0.0.0.0 --port 8003 --reload
+    ports:
+      - "8003:8003"
+    environment:
+      <<: *common-env
+      FILTER_A_WALLET: ${FILTER_A_WALLET:-0xFILTER_A}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  # ── Filter Agent B ──────────────────────────────────────────────────────────
+  filter_b:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    command: uvicorn agents.filter_b.main:app --host 0.0.0.0 --port 8004 --reload
+    ports:
+      - "8004:8004"
+    environment:
+      <<: *common-env
+      FILTER_B_WALLET: ${FILTER_B_WALLET:-0xFILTER_B}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  # ── Fact-Check Agent (x402-gated) ───────────────────────────────────────────
+  factcheck:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    command: uvicorn agents.factcheck.main:app --host 0.0.0.0 --port 8005 --reload
+    ports:
+      - "8005:8005"
+    environment:
+      <<: *common-env
+      ORCHESTRATOR_WALLET: ${ORCHESTRATOR_WALLET:-0xORCHESTRATOR}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - .:/app
+    working_dir: /app

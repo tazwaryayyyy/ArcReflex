@@ -1,0 +1,24 @@
+# ArcReflex — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# ── Core Framework ────────────────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12
+httpx==0.27.2
+
+# ── Ethereum / EIP-3009 Signing ───────────────────────────────────────────────
+eth-account==0.13.3
+web3==7.4.0
+
+# ── Async & Utilities ─────────────────────────────────────────────────────────
+asyncio==3.4.3
+pydantic==2.9.2
+python-dotenv==1.0.1
+
+# ── Vyper (for local contract compilation) ────────────────────────────────────
+vyper==0.3.10
+titanoboa==0.2.3       # Local Arc fork for testing
+
+# ── Deployment ────────────────────────────────────────────────────────────────
+gunicorn==23.0.0

@@ -1,0 +1,62 @@
+{
+  "_instructions": "Run the full pipeline 10+ times before recording. Paste real tx hashes from Arc block explorer here. Use during the demo: open this file, paste a hash into Arc explorer, show it live.",
+  "deployed_at": null,
+  "network": "arc-testnet",
+  "arc_explorer_base": "https://explorer.arc.circle.com/tx/",
+  "contracts": {
+    "AgentRegistry": null,
+    "explorer_link": null
+  },
+  "wallets": {
+    "Orchestrator": null,
+    "search_a": null,
+    "search_b": null,
+    "filter_a": null,
+    "filter_b": null
+  },
+  "demo_runs": [
+    {
+      "run": 1,
+      "timestamp": null,
+      "task": "Competitive analysis of AI agent frameworks",
+      "total_tx": null,
+      "released": null,
+      "withheld": null,
+      "total_usdc": null,
+      "switch_tx_hash": null,
+      "sample_tx_hashes": []
+    },
+    {
+      "run": 2,
+      "timestamp": null,
+      "task": "Market analysis of blockchain payment protocols",
+      "total_tx": null,
+      "released": null,
+      "withheld": null,
+      "total_usdc": null,
+      "switch_tx_hash": null,
+      "sample_tx_hashes": []
+    },
+    {
+      "run": 3,
+      "timestamp": null,
+      "task": "Competitive landscape of AI infrastructure",
+      "total_tx": null,
+      "released": null,
+      "withheld": null,
+      "total_usdc": null,
+      "switch_tx_hash": null,
+      "sample_tx_hashes": []
+    }
+  ],
+  "highlight_txs": {
+    "_note": "Pick 3-5 most visually clean tx hashes for the demo video. These are your proof.",
+    "show_in_video": []
+  },
+  "gas_proof": {
+    "total_transactions": null,
+    "arc_gas_paid_usdc": null,
+    "ethereum_equivalent_usdc": null,
+    "ratio": null
+  }
+}
