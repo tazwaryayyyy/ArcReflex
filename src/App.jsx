@@ -1,5 +1,70 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
+function CustomCursor() {
+  const dotRef  = useRef(null);
+  const ringRef = useRef(null);
+  const mouse   = useRef({ x: -100, y: -100 });
+  const ring    = useRef({ x: -100, y: -100 });
+  const rafRef  = useRef(null);
+  const [isHovering, setIsHovering] = useState(false);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      mouse.current = { x: e.clientX, y: e.clientY };
+      if (dotRef.current) {
+        dotRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+      }
+      const target = e.target;
+      const clickable = target.closest("button, input, a, [role='button']");
+      setIsHovering(!!clickable);
+    };
+
+    const animate = () => {
+      const ease = 0.13;
+      ring.current.x += (mouse.current.x - ring.current.x) * ease;
+      ring.current.y += (mouse.current.y - ring.current.y) * ease;
+      if (ringRef.current) {
+        ringRef.current.style.transform = `translate(${ring.current.x}px, ${ring.current.y}px)`;
+      }
+      rafRef.current = requestAnimationFrame(animate);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    rafRef.current = requestAnimationFrame(animate);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const ringSize = isHovering ? 44 : 32;
+
+  return (
+    <>
+      {/* Dot — snaps instantly */}
+      <div ref={dotRef} style={{
+        position:"fixed", top:0, left:0, pointerEvents:"none", zIndex:99999,
+        width:6, height:6, borderRadius:"50%",
+        background:COLORS.violet,
+        boxShadow:`0 0 8px ${COLORS.violet}, 0 0 16px ${COLORS.violet}88`,
+        marginLeft:-3, marginTop:-3,
+        transition:"width 0.2s, height 0.2s",
+        willChange:"transform",
+      }} />
+      {/* Ring — lags behind */}
+      <div ref={ringRef} style={{
+        position:"fixed", top:0, left:0, pointerEvents:"none", zIndex:99998,
+        width:ringSize, height:ringSize, borderRadius:"50%",
+        border:`1.5px solid ${isHovering ? COLORS.green : COLORS.violet}88`,
+        boxShadow:`0 0 12px ${COLORS.violet}33`,
+        marginLeft:-(ringSize/2), marginTop:-(ringSize/2),
+        transition:"width 0.25s ease, height 0.25s ease, margin 0.25s ease, border-color 0.25s ease",
+        willChange:"transform",
+      }} />
+    </>
+  );
+}
+
 const COLORS = {
   bg:      "#05050D",
   surface: "#0A0A16",
@@ -92,6 +157,7 @@ export default function App() {
         from { opacity: 0; transform: translateY(12px); }
         to   { opacity: 1; transform: translateY(0); }
       }
+      *, *::before, *::after { cursor: none !important; }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
@@ -331,7 +397,8 @@ export default function App() {
   const maxCost = CHAINS[0].cost;
 
   return (
-    <div style={{ fontFamily:"'Sora', sans-serif", background:COLORS.bg, color:COLORS.text, height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+    <div style={{ fontFamily:"'Sora', sans-serif", background:COLORS.bg, color:COLORS.text, height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden", cursor:"none" }}>
+      <CustomCursor />
 
       {/* ── ZONE 1: HEADER ── */}
       <div style={{ background:COLORS.surface, borderBottom:`1px solid ${COLORS.border}`, padding:"12px 24px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
