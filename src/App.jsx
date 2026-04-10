@@ -213,6 +213,12 @@ export default function App() {
         to   { opacity: 1; transform: translateY(0); }
       }
       *, *::before, *::after { cursor: none !important; }
+      html, body { overflow: hidden; margin: 0; padding: 0; background: #030405; }
+      ::-webkit-scrollbar { width: 4px; height: 4px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #111828; border-radius: 2px; }
+      ::-webkit-scrollbar-thumb:hover { background: #1e2d40; }
+      * { scrollbar-width: thin; scrollbar-color: #111828 transparent; }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
