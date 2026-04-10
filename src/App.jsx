@@ -1,5 +1,23 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
+// ── Pulse circle with auto-cleanup (SVG animateMotion doesn't fire onAnimationEnd) ──
+function PulseCircle({ pulse, edge, onDone }) {
+  useEffect(() => {
+    const t = setTimeout(() => onDone(pulse.id), 700);
+    return () => clearTimeout(t);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <circle r={5} fill={pulse.color} opacity={0.9}>
+      <animateMotion
+        dur="0.62s"
+        repeatCount="1"
+        fill="freeze"
+        path={`M${edge.x1},${edge.y1} L${edge.x2},${edge.y2}`}
+      />
+    </circle>
+  );
+}
+
 // ── Premium cursor — mix-blend-mode dot + spring ring ────────────────────────
 function CustomCursor() {
   const dotRef  = useRef(null);
@@ -160,6 +178,7 @@ const AGENTS_LIST = [
   { id:"searchB",      label:"Search B",     color:COLORS.green  },
   { id:"filterA",      label:"Filter A",     color:COLORS.amber  },
   { id:"filterB",      label:"Filter B",     color:COLORS.purple },
+  { id:"oracle",       label:"Oracle",       color:COLORS.blue   },
 ];
 
 const CHAINS = [
@@ -570,16 +589,7 @@ export default function App() {
                   {pulses.map(pulse => {
                     const edge = EDGES[pulse.edge];
                     if (!edge) return null;
-                    return (
-                      <circle key={pulse.id} r={5} fill={pulse.color} opacity={0.9}>
-                        <animateMotion
-                          dur="0.62s"
-                          repeatCount="1"
-                          path={`M${edge.x1},${edge.y1} L${edge.x2},${edge.y2}`}
-                          onAnimationEnd={() => removePulse(pulse.id)}
-                        />
-                      </circle>
-                    );
+                    return <PulseCircle key={pulse.id} pulse={pulse} edge={edge} onDone={removePulse} />;
                   })}
 
                   {/* Nodes */}
@@ -743,8 +753,8 @@ export default function App() {
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:32 }}>
                   <div style={{ background:COLORS.card, border:`1px solid ${COLORS.border}`, borderRadius:8, padding:16 }}>
                     <div style={{ fontFamily:"'Sora',sans-serif", fontSize:11, color:COLORS.muted, marginBottom:8 }}>Ethereum Overhead</div>
-                    <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:20, color:COLORS.red, fontWeight:600 }}>$477.00 per tx</div>
-                    <div style={{ fontFamily:"'Sora',sans-serif", fontSize:11, color:COLORS.muted, marginTop:4 }}>vs $0.000225 Arc</div>
+                    <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:20, color:COLORS.red, fontWeight:600 }}>$477 per task</div>
+                    <div style={{ fontFamily:"'Sora',sans-serif", fontSize:11, color:COLORS.muted, marginTop:4 }}>225 txs · $2.12 each</div>
                   </div>
                   <div style={{ background:COLORS.card, border:`1px solid ${COLORS.border}`, borderRadius:8, padding:16 }}>
                     <div style={{ fontFamily:"'Sora',sans-serif", fontSize:11, color:COLORS.muted, marginBottom:8 }}>Cost Ratio</div>
@@ -758,9 +768,9 @@ export default function App() {
                   Agent Revenue
                 </div>
                 <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:32 }}>
-                  {AGENT_REVENUE.map(agent => {
+                  {(() => {
                     const maxEarned = Math.max(...AGENT_REVENUE.map(a => a.earned));
-                    return (
+                    return AGENT_REVENUE.map(agent => (
                       <div key={agent.name} style={{ display:"flex", alignItems:"center", gap:12 }}>
                         <div style={{ fontFamily:"'Sora',sans-serif", fontSize:12, color:COLORS.text, width:120, flexShrink:0 }}>
                           {agent.name}
@@ -775,8 +785,8 @@ export default function App() {
                           ${agent.earned.toFixed(4)}
                         </div>
                       </div>
-                    );
-                  })}
+                    ));
+                  })()}
                 </div>
 
                 {/* Section 4: USYC */}
@@ -916,7 +926,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:11, fontWeight:500, flexShrink:0, color:tx.withheld ? COLORS.red : COLORS.green }}>
-                    {tx.withheld ? "✗" : `$${Number(tx.amount).toFixed(6)}`}
+                    {tx.withheld ? "✗" : tx.amount >= 1 ? `$${Number(tx.amount).toFixed(2)}` : `$${Number(tx.amount).toFixed(6)}`}
                   </div>
                 </div>
               ))
