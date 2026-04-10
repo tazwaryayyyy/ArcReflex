@@ -1,68 +1,75 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-// ── Precision reticle cursor ─────────────────────────────────────────────────
+// ── Premium cursor — mix-blend-mode dot + spring ring ────────────────────────
 function CustomCursor() {
-  const ref   = useRef(null);
+  const dotRef  = useRef(null);
+  const ringRef = useRef(null);
+  const mouse   = useRef({ x: -200, y: -200 });
+  const pos     = useRef({ x: -200, y: -200 });
+  const vel     = useRef({ x: 0,    y: 0    });
+  const rafRef  = useRef(null);
   const [hot, setHot] = useState(false);
 
   useEffect(() => {
     const onMove = (e) => {
-      if (ref.current) {
-        ref.current.style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
+      mouse.current = { x: e.clientX, y: e.clientY };
+      if (dotRef.current) {
+        dotRef.current.style.left = `${e.clientX}px`;
+        dotRef.current.style.top  = `${e.clientY}px`;
       }
       setHot(!!e.target.closest("button,input,a,[role='button']"));
     };
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
+
+    const tick = () => {
+      const stiffness = 0.11;
+      const damping   = 0.76;
+      vel.current.x = vel.current.x * damping + (mouse.current.x - pos.current.x) * stiffness;
+      vel.current.y = vel.current.y * damping + (mouse.current.y - pos.current.y) * stiffness;
+      pos.current.x += vel.current.x;
+      pos.current.y += vel.current.y;
+      if (ringRef.current) {
+        ringRef.current.style.left = `${pos.current.x}px`;
+        ringRef.current.style.top  = `${pos.current.y}px`;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    window.addEventListener("mousemove", onMove, { passive: true });
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      cancelAnimationFrame(rafRef.current);
+    };
   }, []);
 
-  const c  = hot ? COLORS.green  : COLORS.violet;
-  const c2 = hot ? COLORS.violet : COLORS.blue;
-  const sc = hot ? 1.25 : 1;
-
   return (
-    <div ref={ref} style={{
-      position:"fixed", top:0, left:0, pointerEvents:"none", zIndex:99999,
-      width:0, height:0, willChange:"transform",
-    }}>
-      <svg
-        width={44} height={44}
-        viewBox="0 0 44 44"
-        style={{
-          position:"absolute",
-          top:-22, left:-22,
-          transform:`scale(${sc}) rotate(${hot?45:0}deg)`,
-          transition:"transform 0.2s cubic-bezier(.23,1,.32,1)",
-          overflow:"visible",
-        }}
-      >
-        {/* Outer dashed ring */}
-        <circle cx="22" cy="22" r="18"
-          fill="none" stroke={c2} strokeWidth="0.8"
-          strokeDasharray="4 3" opacity="0.45"
-        />
-        {/* Inner solid ring */}
-        <circle cx="22" cy="22" r="10"
-          fill="none" stroke={c} strokeWidth="1"
-          opacity="0.6"
-        />
-        {/* Center dot */}
-        <circle cx="22" cy="22" r="1.8" fill={c} />
-        {/* N tick */}
-        <line x1="22" y1="2"  x2="22" y2="10" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
-        {/* S tick */}
-        <line x1="22" y1="34" x2="22" y2="42" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
-        {/* W tick */}
-        <line x1="2"  y1="22" x2="10" y2="22" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
-        {/* E tick */}
-        <line x1="34" y1="22" x2="42" y2="22" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
-        {/* Corner accent marks */}
-        <line x1="33" y1="11" x2="36" y2="8"  stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
-        <line x1="11" y1="11" x2="8"  y2="8"  stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
-        <line x1="33" y1="33" x2="36" y2="36" stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
-        <line x1="11" y1="33" x2="8"  y2="36" stroke={c} strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
-      </svg>
-    </div>
+    <>
+      {/* Dot: mix-blend-mode difference — inverts whatever's beneath it */}
+      <div ref={dotRef} style={{
+        position:"fixed", pointerEvents:"none", zIndex:99999,
+        width: hot ? 12 : 7,
+        height: hot ? 12 : 7,
+        borderRadius:"50%",
+        background:"#ffffff",
+        mixBlendMode:"difference",
+        transform:"translate(-50%,-50%)",
+        transition:"width 0.18s ease, height 0.18s ease",
+        willChange:"left, top",
+      }} />
+      {/* Ring: spring-physics follower, ghost-thin stroke */}
+      <div ref={ringRef} style={{
+        position:"fixed", pointerEvents:"none", zIndex:99998,
+        width: hot ? 52 : 36,
+        height: hot ? 52 : 36,
+        borderRadius:"50%",
+        border: hot
+          ? `1px solid rgba(0,217,126,0.6)`
+          : `1px solid rgba(255,255,255,0.22)`,
+        transform:"translate(-50%,-50%)",
+        transition:"width 0.28s cubic-bezier(0.23,1,0.32,1), height 0.28s cubic-bezier(0.23,1,0.32,1), border-color 0.28s ease",
+        willChange:"left, top",
+      }} />
+    </>
   );
 }
 
