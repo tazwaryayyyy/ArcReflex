@@ -39,3 +39,4 @@ temp/
 .local/
 attached_assets/
 *.zip
+artifacts/

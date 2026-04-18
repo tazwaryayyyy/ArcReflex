@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import subprocess
 import time
 import uuid
 from pathlib import Path
@@ -8,7 +9,7 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from payments.nanopayment_client import NanopaymentClient
 
@@ -24,6 +25,83 @@ ORCHESTRATOR_WALLET = os.getenv("ORCHESTRATOR_WALLET", "0xORCHESTRATOR")
 ORCHESTRATOR_KEY = os.getenv("ORCHESTRATOR_PRIVKEY", "0x" + "a" * 64)
 QUALITY_THRESHOLD = float(os.getenv("QUALITY_THRESHOLD", "0.70"))
 EVIDENCE_PATH = Path(os.getenv("EVIDENCE_PATH", "evidence.json"))
+JUDGE_ARTIFACT_DIR = Path(os.getenv("JUDGE_ARTIFACT_DIR", "artifacts/judge"))
+
+
+def _git_commit() -> str:
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        return out or "unknown"
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+
+
+def _stage_latencies_ms(stages: dict[str, float]) -> dict[str, int]:
+    def delta(start: str, end: str) -> int:
+        if start in stages and end in stages:
+            return int((stages[end] - stages[start]) * 1000)
+        return 0
+
+    return {
+        "search_ms": delta("search_start", "search_end"),
+        "filter_ms": delta("filter_start", "filter_end"),
+        "total_ms": delta("run_start", "run_end"),
+    }
+
+
+def _build_pass_fail(
+    red_team: bool,
+    stats: dict,
+    quality_decisions: list[dict],
+    switch_events: list[dict],
+    released_hashes: list[str],
+) -> list[dict]:
+    checks = []
+
+    checks.append({
+        "name": "Minimum transaction volume",
+        "passed": int(stats.get("total_transactions", 0)) >= 225,
+        "expected": ">= 225",
+        "actual": int(stats.get("total_transactions", 0)),
+    })
+
+    checks.append({
+        "name": "Valid released transaction hashes",
+        "passed": len(released_hashes) > 0 and all(
+            isinstance(h, str) and h.startswith("0x") and len(h) == 66
+            for h in released_hashes
+        ),
+        "expected": "all released tx hashes are 0x + 64 hex",
+        "actual": f"{len(released_hashes)} released hashes",
+    })
+
+    if red_team:
+        checks.append({
+            "name": "Quality withholding occurred",
+            "passed": int(stats.get("withheld", 0)) >= 1 and len(quality_decisions) >= 1,
+            "expected": ">= 1 withheld payment",
+            "actual": int(stats.get("withheld", 0)),
+        })
+        checks.append({
+            "name": "Provider switch occurred",
+            "passed": len(switch_events) >= 1,
+            "expected": ">= 1 switch",
+            "actual": len(switch_events),
+        })
+        improved = any(ev.get("improvement_delta", 0.0)
+                       > 0 for ev in switch_events)
+        checks.append({
+            "name": "Measurable recovery after switch",
+            "passed": improved,
+            "expected": "improvement delta > 0",
+            "actual": max([ev.get("improvement_delta", 0.0) for ev in switch_events] + [0.0]),
+        })
+
+    return checks
 
 
 def _agent_url(env_name: str, default_url: str) -> str:
@@ -134,14 +212,39 @@ class EvidenceStore:
         self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
+class JudgeState:
+    def __init__(self):
+        self.current_task_state = "idle"
+        self.current_task_id = None
+        self.current_task_text = None
+        self.last_bundle = None
+        self.last_compact = None
+        self.last_artifact_path = None
+
+
+judge_state = JudgeState()
+
+
 class TaskExecutor:
     def __init__(self, client: NanopaymentClient, evidence: EvidenceStore):
         self.payment = client
         self.evidence = evidence
 
-    async def execute(self, task_id: str, task_text: str) -> dict:
+    async def execute(
+        self,
+        task_id: str,
+        task_text: str,
+        red_team: bool = False,
+        red_team_degrade_at: int = 120,
+    ) -> dict:
         broadcast = self.payment.broadcast
+        stage_ts: dict[str, float] = {"run_start": time.time()}
+        quality_decisions: list[dict] = []
+        switch_events: list[dict] = []
+        filter_quality_before: list[float] = []
+        filter_quality_after: list[float] = []
 
+        stage_ts["search_start"] = time.time()
         search_winner = run_auction("search")
         await broadcast({
             "type": "auction_complete",
@@ -153,6 +256,7 @@ class TaskExecutor:
             resp = await client.post(f"{search_info['url']}/search", json={"query": task_text, "n": 25})
             resp.raise_for_status()
             results = resp.json().get("results", [])
+        stage_ts["search_end"] = time.time()
 
         for i, _ in enumerate(results):
             tx = await self.payment.pay(
@@ -166,6 +270,7 @@ class TaskExecutor:
             )
             await broadcast({"type": "nanopayment", "payload": tx.to_dict()})
 
+        stage_ts["filter_start"] = time.time()
         filter_winner = run_auction("filter")
         await broadcast({
             "type": "auction_complete",
@@ -197,6 +302,10 @@ class TaskExecutor:
                 score = 0.6 if (
                     not switched and current_filter == "filter_a") else 0.82
 
+            # Deterministic red-team degradation event for judge demo.
+            if red_team and (not switched) and current_filter == "filter_a" and i == red_team_degrade_at:
+                score = min(score, QUALITY_THRESHOLD - 0.09)
+
             if score < QUALITY_THRESHOLD and not switched:
                 withheld_tx = await self.payment.withhold_payment(
                     from_label="Orchestrator",
@@ -207,10 +316,33 @@ class TaskExecutor:
                     item_index=i,
                 )
                 await broadcast({"type": "payment_withheld", "payload": withheld_tx.to_dict()})
+                quality_decisions.append({
+                    "item_index": i,
+                    "agent": current_filter,
+                    "decision": "withheld",
+                    "quality_score": round(score, 3),
+                    "threshold": QUALITY_THRESHOLD,
+                    "reason": f"Quality {score:.2f} < threshold {QUALITY_THRESHOLD:.2f}",
+                    "timestamp": time.time(),
+                })
 
                 failed_agent = current_filter
                 current_filter = run_auction("filter", exclude=failed_agent)
                 switched = True
+
+                before = sum(
+                    filter_quality_before[-10:]) / max(len(filter_quality_before[-10:]), 1)
+                after = score
+                switch_events.append({
+                    "from": failed_agent,
+                    "to": current_filter,
+                    "item_index": i,
+                    "quality_at_switch": round(score, 3),
+                    "quality_before_window": round(before, 3),
+                    "quality_after_window": round(after, 3),
+                    "improvement_delta": round(after - before, 3),
+                    "timestamp": time.time(),
+                })
 
                 await broadcast({
                     "type": "agent_switch",
@@ -224,6 +356,11 @@ class TaskExecutor:
                     },
                 })
 
+            if current_filter == "filter_a":
+                filter_quality_before.append(score)
+            else:
+                filter_quality_after.append(score)
+
             paid_tx = await self.payment.pay(
                 recipient_wallet=AGENTS[current_filter]["wallet"],
                 amount_usdc=AGENTS[current_filter]["price_per_item"],
@@ -235,9 +372,76 @@ class TaskExecutor:
             )
             await broadcast({"type": "nanopayment", "payload": paid_tx.to_dict()})
 
+        stage_ts["filter_end"] = time.time()
+
         stats = self.payment.get_stats()
         txs = self.payment.get_transactions(limit=1000)
         self.evidence.append_run(task_id, task_text, stats, txs)
+        stage_ts["run_end"] = time.time()
+
+        released_hashes = [
+            t.get("hash") for t in txs if t.get("status") == "released"
+        ]
+        checks = _build_pass_fail(
+            red_team=red_team,
+            stats=stats,
+            quality_decisions=quality_decisions,
+            switch_events=switch_events,
+            released_hashes=released_hashes,
+        )
+        overall_pass = all(c.get("passed") for c in checks)
+
+        trust_model = {
+            "trustless": [
+                "On-chain settlement receipts (transaction hashes on Arc)",
+                "Deterministic quality threshold logic enforced in orchestrator runtime",
+            ],
+            "trusted": [
+                "Orchestrator policy authority for payment authorization",
+                "Agent service availability and response correctness",
+            ],
+            "roadmap": [
+                "Decentralized attestation for quality scoring",
+                "On-chain policy commitments for payout conditions",
+            ],
+        }
+
+        judge_bundle = {
+            "task_id": task_id,
+            "task_text": task_text,
+            "red_team_enabled": red_team,
+            "timestamps": stage_ts,
+            "latencies_ms": _stage_latencies_ms(stage_ts),
+            "quality_decisions": quality_decisions,
+            "switch_events": switch_events,
+            "released_transaction_hashes": released_hashes,
+            "stats": stats,
+            "cost_summary": {
+                "total_usdc_settled": stats.get("total_usdc_settled"),
+                "arc_gas_usdc": stats.get("gas_cost_usdc"),
+                "eth_equiv_gas_usdc": stats.get("gas_cost_eth_equiv"),
+            },
+            "reproducibility": {
+                "git_commit": _git_commit(),
+                "orchestrator_version": app.version,
+                "env_flags": {
+                    "QUALITY_THRESHOLD": QUALITY_THRESHOLD,
+                    "ARCREFLEX_STRICT_X402": os.getenv("ARCREFLEX_STRICT_X402", "true"),
+                    "ARCREFLEX_ALLOW_INSECURE_DEMO": os.getenv("ARCREFLEX_ALLOW_INSECURE_DEMO", "false"),
+                    "ARC_CHAIN_ID": os.getenv("ARC_CHAIN_ID", "1234567"),
+                },
+            },
+            "checks": checks,
+            "overall_pass": overall_pass,
+            "trust_model": trust_model,
+        }
+
+        JUDGE_ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+        artifact_path = JUDGE_ARTIFACT_DIR / \
+            f"run_{int(time.time())}_{task_id}.json"
+        artifact_path.write_text(json.dumps(
+            judge_bundle, indent=2), encoding="utf-8")
+        judge_bundle["artifact_path"] = str(artifact_path)
 
         report = {
             "title": f"Competitive Analysis: {task_text}",
@@ -256,7 +460,14 @@ class TaskExecutor:
             "type": "task_complete",
             "payload": {"task_id": task_id, "report": report, "stats": stats},
         })
-        return {"task_id": task_id, "report": report, "stats": stats}
+        if judge_state.current_task_id == task_id:
+            judge_state.current_task_state = "complete"
+        return {
+            "task_id": task_id,
+            "report": report,
+            "stats": stats,
+            "judge_bundle": judge_bundle,
+        }
 
 
 payment_client = NanopaymentClient(
@@ -285,6 +496,9 @@ async def submit_task(body: dict):
         return JSONResponse({"error": "task text is required"}, status_code=400)
 
     task_id = f"task_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+    judge_state.current_task_state = "running"
+    judge_state.current_task_id = task_id
+    judge_state.current_task_text = task_text
     asyncio.create_task(task_executor.execute(task_id, task_text))
 
     return {
@@ -318,9 +532,115 @@ async def health():
     }
 
 
+@app.get("/judge/status")
+async def judge_status():
+    return {
+        "current_task_state": judge_state.current_task_state,
+        "current_task_id": judge_state.current_task_id,
+        "current_task_text": judge_state.current_task_text,
+        "last_compact": judge_state.last_compact,
+        "last_bundle": judge_state.last_bundle,
+        "last_artifact_path": judge_state.last_artifact_path,
+    }
+
+
+@app.post("/judge/run-sync")
+async def judge_run_sync(body: dict):
+    task_text = body.get("text", "ArcReflex deterministic judge run").strip()
+    red_team = bool(body.get("red_team", True))
+    red_team_degrade_at = int(body.get("red_team_degrade_at", 120))
+
+    if not task_text:
+        return JSONResponse({"error": "task text is required"}, status_code=400)
+
+    payment_client.reset()
+    task_id = f"judge_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+    judge_state.current_task_state = "running"
+    judge_state.current_task_id = task_id
+    judge_state.current_task_text = task_text
+
+    try:
+        result = await task_executor.execute(
+            task_id=task_id,
+            task_text=task_text,
+            red_team=red_team,
+            red_team_degrade_at=red_team_degrade_at,
+        )
+    except (RuntimeError, httpx.HTTPError) as exc:
+        judge_state.current_task_state = "failed"
+        return JSONResponse(
+            {
+                "task_id": task_id,
+                "status": "failed",
+                "error": str(exc),
+            },
+            status_code=500,
+        )
+
+    bundle = result.get("judge_bundle", {})
+    checks = bundle.get("checks", [])
+    compact = {
+        "task_id": task_id,
+        "status": "pass" if bundle.get("overall_pass") else "fail",
+        "summary": {
+            "total_transactions": bundle.get("stats", {}).get("total_transactions", 0),
+            "released": bundle.get("stats", {}).get("released", 0),
+            "withheld": bundle.get("stats", {}).get("withheld", 0),
+            "total_usdc_settled": bundle.get("stats", {}).get("total_usdc_settled", 0.0),
+            "total_latency_ms": bundle.get("latencies_ms", {}).get("total_ms", 0),
+        },
+        "checks": checks,
+        "artifact_path": bundle.get("artifact_path"),
+    }
+
+    judge_state.current_task_state = "complete"
+    judge_state.last_bundle = bundle
+    judge_state.last_compact = compact
+    judge_state.last_artifact_path = bundle.get("artifact_path")
+
+    return {
+        "compact": compact,
+        "bundle": bundle,
+    }
+
+
+@app.get("/judge/export/latest")
+async def judge_export_latest():
+    if not judge_state.last_bundle:
+        return JSONResponse({"error": "no judge run available"}, status_code=404)
+
+    payload = json.dumps(judge_state.last_bundle, indent=2)
+    return Response(
+        content=payload,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": "attachment; filename=judge_bundle_latest.json"},
+    )
+
+
+@app.get("/judge/summary")
+async def judge_summary():
+    summary_path = JUDGE_ARTIFACT_DIR / "judge_summary.json"
+    if not summary_path.exists():
+        return JSONResponse({"error": "judge summary not found"}, status_code=404)
+
+    try:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return JSONResponse({"error": "judge summary unreadable"}, status_code=500)
+
+    return {
+        "summary": summary,
+        "path": str(summary_path),
+    }
+
+
 @app.delete("/reset")
 async def reset():
     payment_client.reset()
+    judge_state.current_task_state = "idle"
+    judge_state.current_task_id = None
+    judge_state.current_task_text = None
     for agent in AGENTS.values():
         agent["active"] = True
     AGENTS["search_a"]["reputation"] = 72

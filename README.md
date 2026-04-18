@@ -7,6 +7,11 @@ ArcReflex is a multi-agent prototype where an orchestrator selects agents, score
 - x402-style middleware for paid API access
 - basic frontend to visualize orchestration activity
 
+Evidence-first positioning:
+- deterministic judge-mode execution
+- compact pass/fail checks per run
+- auto-generated evidence artifacts for verification
+
 ## Current Status
 
 The repository has been cleaned and aligned for local development:
@@ -71,6 +76,79 @@ npm run dev
 docker compose up --build
 ```
 
+## One-Click Judge Run
+
+Run the full deterministic flow with red-team degradation, automatic failover, and compact pass/fail checks:
+
+```bash
+npm run judge:run
+```
+
+One-command run + independent verification:
+
+```bash
+npm run judge:prove
+```
+
+Equivalent direct command:
+
+```bash
+python judge_run.py --runs 3 --base-url http://localhost:8000
+```
+
+Outputs are written to `artifacts/judge/`:
+- `bundle_<task_id>.json` (per-run evidence bundle)
+- `judge_summary.json` (median/p95 hard numbers)
+
+Reproducibility line emitted by runner:
+- `JUDGE_SUMMARY_SHA256=<sha256>`
+
+Independent verifier (no orchestrator imports):
+
+```bash
+npm run judge:verify
+```
+
+Verifier output includes:
+- `VERIFIER_STATUS=PASS|FAIL`
+- `VERIFIER_SUMMARY_SHA256=<sha256>`
+
+## Judge Reproducibility Checklist
+
+Use this list in front of judges for fast validation:
+
+1. Start backend services and ensure orchestrator health endpoint responds.
+2. Run one command:
+
+```bash
+npm run judge:prove
+```
+
+3. Confirm output contains all of these lines:
+- `JUDGE_SUMMARY_SHA256=<64-hex>`
+- `VERIFIER_SUMMARY_SHA256=<64-hex>`
+- `VERIFIER_STATUS=PASS`
+
+4. Confirm the two SHA256 values match exactly.
+5. Open Judge tab and verify compact checks are all PASS.
+6. Export latest bundle and keep it as submission evidence.
+
+Expected terminal snippet shape:
+
+```text
+JUDGE_SUMMARY_SHA256=........................................................
+VERIFIER_SUMMARY_SHA256=........................................................
+VERIFIER_BUNDLES=3
+VERIFIER_STATUS=PASS
+```
+
+Each bundle contains:
+- transaction hashes
+- timestamps and stage latencies
+- quality decisions and withheld payments
+- total cost summary
+- reproducibility metadata (commit + env flags)
+
 ## Environment Notes
 
 Key environment variables used by payment/x402 flows include:
@@ -86,7 +164,39 @@ For submission-grade behavior, keep strict mode enabled and insecure demo mode d
 
 ## Evidence Output
 
-When payment flow is exercised successfully, execution artifacts can be appended to `evidence.json`.
+When payment flow is exercised successfully, execution artifacts are written to:
+- `evidence.json` (project run history)
+- `artifacts/judge/*.json` (judge-mode bundles and benchmark summary)
+
+## Red-Team Scenario
+
+Judge-mode runs force a deterministic degradation event (`red_team_degrade_at`) to demonstrate:
+- degrade an agent
+- withhold payment on failed quality
+- switch to backup provider
+- complete task after recovery with measurable delta
+
+## Judge-Facing Dashboard
+
+The frontend includes a `judge` tab for operator review with:
+- current task state
+- payment event summary
+- quality gate decisions
+- compact check list (pass/fail)
+- evidence export button
+
+## Trust Model
+
+See `docs/TRUST_MODEL_SLIDE.md` for explicit trust boundaries:
+- what is trustless today
+- what remains trusted
+- what is roadmap
+
+Additional judge materials:
+- `docs/JUDGE_BASELINE_TABLE.md`
+- `docs/DEMO_CHOREOGRAPHY.md`
+- `docs/ECONOMICS_SLIDE.md`
+- `docs/SECURITY_AND_ABUSE_POSTURE.md`
 
 ## License
 
