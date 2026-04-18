@@ -16,19 +16,21 @@ This is the core of why ArcReflex works:
 
 import os
 import time
-import asyncio
-import hashlib
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from typing import Optional
 
 import httpx
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-CIRCLE_API_KEY      = os.getenv("CIRCLE_API_KEY", "")
-CIRCLE_GATEWAY_URL  = os.getenv("CIRCLE_GATEWAY_URL", "https://api.circle.com/v1/w3s")
-ARC_CHAIN_ID        = int(os.getenv("ARC_CHAIN_ID", "1234567"))
-USDC_ADDRESS        = os.getenv("USDC_ADDRESS", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
+CIRCLE_API_KEY = os.getenv("CIRCLE_API_KEY", "")
+CIRCLE_GATEWAY_URL = os.getenv(
+    "CIRCLE_GATEWAY_URL", "https://api.circle.com/v1/w3s")
+ARC_CHAIN_ID = int(os.getenv("ARC_CHAIN_ID", "1234567"))
+USDC_ADDRESS = os.getenv(
+    "USDC_ADDRESS", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
+ALLOW_INSECURE_DEMO = os.getenv(
+    "ARCREFLEX_ALLOW_INSECURE_DEMO", "false").lower() == "true"
 
 
 # ── Data Models ───────────────────────────────────────────────────────────────
@@ -103,17 +105,20 @@ class NanopaymentClient:
         for ws in self._ws_clients:
             try:
                 await ws.send_json(event)
-            except Exception:
+            except RuntimeError:
                 dead.append(ws)
         for ws in dead:
             self._ws_clients.remove(ws)
+
+    async def broadcast(self, event: dict):
+        """Public wrapper for event broadcast."""
+        await self._broadcast(event)
 
     # ── EIP-3009 signing ──────────────────────────────────────────────────────
 
     def _generate_nonce(self) -> str:
         """Generate a unique 32-byte nonce as 0x-prefixed hex string."""
-        import os as _os
-        raw = _os.urandom(32)
+        raw = os.urandom(32)
         return "0x" + raw.hex()
 
     def _build_structured_data(
@@ -141,7 +146,7 @@ class NanopaymentClient:
                     {"name": "to",         "type": "address"},
                     {"name": "value",      "type": "uint256"},
                     {"name": "validAfter", "type": "uint256"},
-                    {"name": "validBefore","type": "uint256"},
+                    {"name": "validBefore", "type": "uint256"},
                     {"name": "nonce",      "type": "bytes32"},
                 ],
             },
@@ -171,7 +176,6 @@ class NanopaymentClient:
         """
         try:
             from eth_account import Account
-            from eth_account.messages import encode_structured_data
 
             signed = Account.sign_typed_data(
                 private_key=self.private_key,
@@ -181,15 +185,11 @@ class NanopaymentClient:
             s = "0x" + signed.s.to_bytes(32, "big").hex()
             return signed.v, r, s
 
-        except ImportError:
-            # Fallback for environments without eth-account
-            # In demo mode: generate placeholder signatures
-            import hashlib, os as _os
-            fake_hash = hashlib.sha256(str(structured_data).encode()).hexdigest()
-            v = 27
-            r = "0x" + fake_hash
-            s = "0x" + hashlib.sha256(fake_hash.encode()).hexdigest()
-            return v, r, s
+        except ImportError as e:
+            raise RuntimeError(
+                "eth-account is required to sign EIP-3009 authorizations. "
+                "Install dependencies with requirements.txt."
+            ) from e
 
     async def _submit_to_circle_gateway(self, auth: EIP3009Authorization) -> str:
         """
@@ -212,11 +212,17 @@ class NanopaymentClient:
             "chainId":     ARC_CHAIN_ID,
         }
 
-        if not self.api_key:
-            # Demo mode: generate a realistic-looking fake tx hash
-            import hashlib as hl
-            seed = f"{auth.from_address}{auth.to_address}{auth.value}{auth.nonce}"
-            return "0x" + hl.sha256(seed.encode()).hexdigest()
+        if not self.api_key and not ALLOW_INSECURE_DEMO:
+            raise RuntimeError(
+                "CIRCLE_API_KEY is required for submission mode. "
+                "Set ARCREFLEX_ALLOW_INSECURE_DEMO=true only for local UI simulation."
+            )
+
+        if not self.api_key and ALLOW_INSECURE_DEMO:
+            raise RuntimeError(
+                "Insecure demo mode is enabled but fake transaction hashes are disabled. "
+                "Provide CIRCLE_API_KEY to generate verifiable transactions."
+            )
 
         try:
             async with httpx.AsyncClient() as client:
@@ -230,9 +236,14 @@ class NanopaymentClient:
                     timeout=10.0,
                 )
                 resp.raise_for_status()
-                return resp.json().get("transactionHash", "0x" + "0" * 64)
+                tx_hash = resp.json().get("transactionHash", "")
+                if not isinstance(tx_hash, str) or not tx_hash.startswith("0x") or len(tx_hash) != 66:
+                    raise RuntimeError(
+                        "Circle Gateway response missing a valid transactionHash")
+                return tx_hash
         except httpx.HTTPStatusError as e:
-            raise RuntimeError(f"Circle Gateway rejected authorization: {e.response.text}") from e
+            raise RuntimeError(
+                f"Circle Gateway rejected authorization: {e.response.text}") from e
         except httpx.RequestError as e:
             raise RuntimeError(f"Circle Gateway unreachable: {e}") from e
 
@@ -258,15 +269,15 @@ class NanopaymentClient:
 
         This is the core payment primitive. Called ~225 times per task.
         """
-        value     = int(amount_usdc * 1_000_000)  # Convert to micro-USDC
-        now       = int(time.time())
-        nonce     = self._generate_nonce()
+        value = int(amount_usdc * 1_000_000)  # Convert to micro-USDC
+        now = int(time.time())
+        nonce = self._generate_nonce()
 
         structured_data = self._build_structured_data(
             to=recipient_wallet,
             value=value,
             valid_after=now - 60,    # 60s grace period for clock skew
-            valid_before=now + 3600, # 1 hour validity window
+            valid_before=now + 3600,  # 1 hour validity window
             nonce=nonce,
         )
 

@@ -18,7 +18,6 @@ Prerequisites:
 """
 
 import os
-import sys
 import json
 import asyncio
 import subprocess
@@ -30,9 +29,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CIRCLE_API_KEY      = os.getenv("CIRCLE_API_KEY", "")
-CIRCLE_WALLETS_URL  = "https://api.circle.com/v1/w3s/wallets"
-ARC_RPC_URL         = os.getenv("ARC_RPC_URL", "https://rpc.arc.circle.com")
+CIRCLE_API_KEY = os.getenv("CIRCLE_API_KEY", "")
+CIRCLE_WALLETS_URL = "https://api.circle.com/v1/w3s/wallets"
+ARC_RPC_URL = os.getenv("ARC_RPC_URL", "https://rpc.arc.circle.com")
+PROJECT_ROOT = Path(__file__).parent
 
 AGENT_DEFINITIONS = [
     {"name": "Orchestrator",  "type": None,     "stake": 0},
@@ -78,13 +78,14 @@ async def create_all_wallets() -> dict:
         }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        tasks = [create_circle_wallet(a["name"], client) for a in AGENT_DEFINITIONS]
+        tasks = [create_circle_wallet(a["name"], client)
+                 for a in AGENT_DEFINITIONS]
         wallets = await asyncio.gather(*tasks)
 
     return {a["name"]: w for a, w in zip(AGENT_DEFINITIONS, wallets)}
 
 
-def deploy_contract(orchestrator_address: str) -> str:
+def deploy_contract() -> str:
     """
     Deploy AgentRegistry.vy to Arc testnet using Titanoboa.
     Returns deployed contract address.
@@ -98,13 +99,13 @@ import boa
 boa.set_network_env("{ARC_RPC_URL}")
 
 # Load and deploy
-registry = boa.load("contracts/AgentRegistry.vy")
+registry = boa.load("AgentRegistry.vy")
 print(f"Deployed at: {{registry.address}}")
 """
     try:
         result = subprocess.run(
             ["python", "-c", deploy_script],
-            capture_output=True, text=True, cwd=Path(__file__).parent.parent
+            capture_output=True, text=True, cwd=PROJECT_ROOT, check=False
         )
         if result.returncode == 0:
             # Parse address from stdout
@@ -116,11 +117,11 @@ print(f"Deployed at: {{registry.address}}")
 
         # Titanoboa not configured — return placeholder
         print("  ⚠  Titanoboa deploy failed — set ARC_RPC_URL and retry")
-        print(f"     Manual deploy: vyper contracts/AgentRegistry.vy")
-        print(f"     Then set AGENT_REGISTRY_ADDR in .env")
+        print("     Manual deploy: vyper AgentRegistry.vy")
+        print("     Then set AGENT_REGISTRY_ADDR in .env")
         return "0x" + "0" * 40
 
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError) as e:
         print(f"  ✗ Deploy error: {e}")
         return "0x" + "0" * 40
 
@@ -128,15 +129,18 @@ print(f"Deployed at: {{registry.address}}")
 def register_agents_in_contract(wallets: dict, registry_address: str):
     """Call AgentRegistry.register() for each agent."""
     print("\n── Registering Agents on-chain ─────────────────────────────────")
+    print(f"  registry: {registry_address}")
 
     for agent in AGENT_DEFINITIONS[1:]:  # Skip Orchestrator
-        print(f"  → Registering {agent['name']} (type: {agent['type']}, stake: ${agent['stake']/1_000_000:.2f})")
+        print(
+            f"  → Registering {agent['name']} (type: {agent['type']}, stake: ${agent['stake']/1_000_000:.2f})")
         # In production: call registry.register(agent_type, identity, stake)
         # with each agent's private key
         # For now: print the call params for manual execution
         wallet = wallets.get(agent["name"], {})
         print(f"     wallet: {wallet.get('address', 'unknown')}")
-        print(f"     call:   registry.register('{agent['type']}', keccak256(wallet_pubkey), {agent['stake']})")
+        print(
+            f"     call:   registry.register('{agent['type']}', keccak256(wallet_pubkey), {agent['stake']})")
 
     print("  ℹ  Fund wallets from Arc testnet faucet before calling register()")
 
@@ -145,7 +149,7 @@ def write_env_file(wallets: dict, registry_address: str):
     """Write all discovered addresses to .env file."""
     print("\n── Writing .env ─────────────────────────────────────────────────")
 
-    env_path = Path(__file__).parent.parent / ".env"
+    env_path = PROJECT_ROOT / ".env"
     existing = {}
 
     if env_path.exists():
@@ -175,7 +179,7 @@ def write_env_file(wallets: dict, registry_address: str):
 
 def save_evidence_json(wallets: dict, registry_address: str):
     """Save deployment evidence for submission."""
-    evidence_path = Path(__file__).parent.parent / "evidence.json"
+    evidence_path = PROJECT_ROOT / "evidence.json"
     evidence = {
         "deployed_at":    time.time(),
         "registry":       registry_address,
@@ -196,8 +200,7 @@ async def main():
     wallets = await create_all_wallets()
 
     # Step 2: Deploy contract
-    orch_addr    = wallets.get("Orchestrator", {}).get("address", "0x0")
-    registry_addr = deploy_contract(orch_addr)
+    registry_addr = deploy_contract()
 
     # Step 3: Register agents
     register_agents_in_contract(wallets, registry_addr)

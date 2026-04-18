@@ -24,20 +24,22 @@ Demo usage:
 import os
 import time
 import functools
-import hashlib
-import hmac
 from typing import Optional, Callable
 
-from fastapi import Request, Response
+from fastapi import Request
 from fastapi.responses import JSONResponse
 
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-CIRCLE_GATEWAY_URL = os.getenv("CIRCLE_GATEWAY_URL", "https://api.circle.com/v1/w3s/nanopayments")
-ORCHESTRATOR_WALLET = os.getenv("ORCHESTRATOR_WALLET", "0x0000000000000000000000000000000000000001")
+CIRCLE_GATEWAY_URL = os.getenv(
+    "CIRCLE_GATEWAY_URL", "https://api.circle.com/v1/w3s/nanopayments")
+ORCHESTRATOR_WALLET = os.getenv(
+    "ORCHESTRATOR_WALLET", "0x0000000000000000000000000000000000000001")
 ARC_CHAIN_ID = os.getenv("ARC_CHAIN_ID", "1234567")
 USDC_ADDRESS = os.getenv("USDC_ADDRESS", "0x...")
+CIRCLE_API_KEY = os.getenv("CIRCLE_API_KEY", "")
+STRICT_X402 = os.getenv("ARCREFLEX_STRICT_X402", "true").lower() == "true"
 
 PAYMENT_REQUIRED_RESPONSE = {
     "error": "Payment required",
@@ -76,7 +78,9 @@ class SignatureValidator:
         self,
         signature: str,
         from_address: str,
+        to_address: str,
         amount_micros: int,
+        valid_after: int,
         valid_before: int,
         nonce: str,
     ) -> tuple[bool, str]:
@@ -87,6 +91,12 @@ class SignatureValidator:
         if not signature.startswith("0x") or len(signature) != 132:
             return False, "ERR_AUTH_SIGNATURE_INVALID: signature must be 0x-prefixed 65-byte hex"
 
+        if not from_address or not from_address.startswith("0x") or len(from_address) != 42:
+            return False, "ERR_AUTH_FROM_MISSING: X-Payment-From must be a valid address"
+
+        if not nonce or not nonce.startswith("0x") or len(nonce) != 66:
+            return False, "ERR_AUTH_NONCE_INVALID: X-Payment-Nonce must be a 32-byte hex value"
+
         if int(time.time()) > valid_before:
             return False, "ERR_AUTH_EXPIRED: authorization has expired"
 
@@ -96,14 +106,39 @@ class SignatureValidator:
         if nonce in self._seen_nonces:
             return False, "ERR_AUTH_NONCE_REPLAYED: nonce already used"
 
-        # In production: call Circle Gateway for on-chain verification
-        # gateway_valid, gateway_reason = self._validate_with_circle(...)
-        # if not gateway_valid:
-        #     return False, gateway_reason
+        v, r, s = self._split_signature(signature)
+
+        if STRICT_X402:
+            if not CIRCLE_API_KEY:
+                return False, "ERR_GATEWAY_NOT_CONFIGURED: CIRCLE_API_KEY is required in strict mode"
+
+            gateway_valid, gateway_reason = self._validate_with_circle(
+                from_address=from_address,
+                to_address=to_address,
+                amount_micros=amount_micros,
+                valid_after=valid_after,
+                valid_before=valid_before,
+                nonce=nonce,
+                v=v,
+                r=r,
+                s=s,
+            )
+            if not gateway_valid:
+                return False, gateway_reason
 
         # Mark nonce as used
         self._seen_nonces.add(nonce)
         return True, "valid"
+
+    def _split_signature(self, signature: str) -> tuple[int, str, str]:
+        raw = signature[2:]
+        r = "0x" + raw[:64]
+        s = "0x" + raw[64:128]
+        v_hex = raw[128:130]
+        v = int(v_hex, 16)
+        if v < 27:
+            v += 27
+        return v, r, s
 
     def _validate_with_circle(
         self,
@@ -139,13 +174,14 @@ class SignatureValidator:
             resp = httpx.post(
                 f"{CIRCLE_GATEWAY_URL}/verify",
                 json=payload,
-                headers={"Authorization": f"Bearer {os.getenv('CIRCLE_API_KEY')}"},
+                headers={
+                    "Authorization": f"Bearer {os.getenv('CIRCLE_API_KEY')}"},
                 timeout=5.0,
             )
             if resp.status_code == 200:
                 return True, "valid"
             return False, f"ERR_GATEWAY: {resp.json().get('message', 'unknown error')}"
-        except Exception as e:
+        except (httpx.HTTPError, ValueError) as e:
             return False, f"ERR_GATEWAY_UNREACHABLE: {e}"
 
 
@@ -178,7 +214,9 @@ def X402Middleware(price_usdc: float, wallet_address: Optional[str] = None):
             payment_sig = request.headers.get("X-Payment-Signature")
             payment_from = request.headers.get("X-Payment-From")
             payment_nonce = request.headers.get("X-Payment-Nonce")
-            payment_valid_before = request.headers.get("X-Payment-Valid-Before")
+            payment_valid_before = request.headers.get(
+                "X-Payment-Valid-Before")
+            payment_valid_after = request.headers.get("X-Payment-Valid-After")
 
             # No payment headers — return 402 with instructions
             if not payment_sig:
@@ -198,11 +236,46 @@ def X402Middleware(price_usdc: float, wallet_address: Optional[str] = None):
                 )
 
             # Validate payment signature
-            valid_before = int(payment_valid_before) if payment_valid_before else 0
+            if not payment_from:
+                return JSONResponse(
+                    status_code=402,
+                    content={
+                        "error": "Payment validation failed",
+                        "reason": "ERR_AUTH_FROM_MISSING: missing X-Payment-From",
+                    },
+                    headers={"X-Payment-Required": "true"},
+                )
+
+            if not payment_nonce:
+                return JSONResponse(
+                    status_code=402,
+                    content={
+                        "error": "Payment validation failed",
+                        "reason": "ERR_AUTH_NONCE_INVALID: missing X-Payment-Nonce",
+                    },
+                    headers={"X-Payment-Required": "true"},
+                )
+
+            if not payment_valid_before:
+                return JSONResponse(
+                    status_code=402,
+                    content={
+                        "error": "Payment validation failed",
+                        "reason": "ERR_AUTH_EXPIRED: missing X-Payment-Valid-Before",
+                    },
+                    headers={"X-Payment-Required": "true"},
+                )
+
+            valid_before = int(
+                payment_valid_before) if payment_valid_before else 0
+            valid_after = int(payment_valid_after) if payment_valid_after else int(
+                time.time()) - 60
             is_valid, reason = _validator.validate(
                 signature=payment_sig,
                 from_address=payment_from or "",
+                to_address=recipient,
                 amount_micros=price_micros,
+                valid_after=valid_after,
                 valid_before=valid_before,
                 nonce=payment_nonce or "",
             )
@@ -210,7 +283,8 @@ def X402Middleware(price_usdc: float, wallet_address: Optional[str] = None):
             if not is_valid:
                 return JSONResponse(
                     status_code=402,
-                    content={"error": "Payment validation failed", "reason": reason},
+                    content={"error": "Payment validation failed",
+                             "reason": reason},
                     headers={"X-Payment-Required": "true"},
                 )
 
@@ -239,7 +313,8 @@ class X402PaymentMiddleware:
     def __init__(self, app, protected_paths: dict[str, float], wallet_address: str):
         self.app = app
         # {"/path": price_usdc}
-        self.protected = {path: int(p * 1_000_000) for path, p in protected_paths.items()}
+        self.protected = {path: int(p * 1_000_000)
+                          for path, p in protected_paths.items()}
         self.wallet = wallet_address
 
     async def __call__(self, scope, receive, send):
