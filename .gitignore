@@ -40,3 +40,7 @@ temp/
 attached_assets/
 *.zip
 artifacts/
+
+# Environment files
+.env
+!.env.example
