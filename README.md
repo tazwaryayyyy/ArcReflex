@@ -77,6 +77,27 @@ npm run dev
 docker compose up --build
 ```
 
+## Render Deployment Notes
+
+If Render defaults to Python 3.14, builds may fail while compiling `pydantic-core` from source.
+This repo includes `runtime.txt` to pin a supported runtime and `requirements.render.txt` for web-service deploys.
+
+For each Render backend service use:
+
+```bash
+Build Command: pip install -r requirements.render.txt
+Start Command: uvicorn <service_module>:app --host 0.0.0.0 --port $PORT
+```
+
+Examples for `<service_module>`:
+- `orchestrator.main`
+- `agents.search_a.main`
+- `agents.search_b.main`
+- `agents.filter_a.main`
+- `agents.filter_b.main`
+- `agents.factcheck.main`
+```
+
 ## One-Click Judge Run
 
 Run the full deterministic flow with red-team degradation, automatic failover, and compact pass/fail checks:
