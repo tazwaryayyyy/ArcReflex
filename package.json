@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5000 --host 0.0.0.0",
+    "build": "vite build",
     "judge:run": "python judge_run.py --runs 3",
     "judge:verify": "python verify_evidence.py --expected-runs 3",
     "judge:prove": "python judge_run.py --runs 3 && python verify_evidence.py --expected-runs 3"
