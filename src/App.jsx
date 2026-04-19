@@ -1,5 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/+$/, "");
+const WS_URL = import.meta.env.VITE_WS_URL || `${API_BASE_URL.replace(/^http/, "ws")}/ws`;
+const apiUrl = (path) => `${API_BASE_URL}${path}`;
+
 // ── Pulse circle with auto-cleanup (SVG animateMotion doesn't fire onAnimationEnd) ──
 function PulseCircle({ pulse, edge, onDone }) {
   useEffect(() => {
@@ -251,7 +255,7 @@ export default function App() {
     let cancelled = false;
     const fetchJudgeSummary = async () => {
       try {
-        const res = await fetch("http://localhost:8000/judge/summary");
+        const res = await fetch(apiUrl("/judge/summary"));
         if (!res.ok) {
           if (!cancelled) setJudgeSummary(null);
           return;
@@ -288,7 +292,7 @@ export default function App() {
   }, [txs]);
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws");
+    const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
     ws.onopen = () => { setWsConnected(true); setWsMode("live"); };
     ws.onerror = () => { setWsMode("simulation"); setWsConnected(false); };
@@ -334,7 +338,7 @@ export default function App() {
     let timer = null;
     const pollJudgeStatus = async () => {
       try {
-        const res = await fetch("http://localhost:8000/judge/status");
+        const res = await fetch(apiUrl("/judge/status"));
         if (!res.ok) return;
         const data = await res.json();
         setJudgeStatus(data);
@@ -483,7 +487,7 @@ export default function App() {
     setJudgeError("");
     setStatus("Judge mode run in progress...");
     try {
-      const res = await fetch("http://localhost:8000/judge/run-sync", {
+      const res = await fetch(apiUrl("/judge/run-sync"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -505,7 +509,7 @@ export default function App() {
         last_artifact_path: data?.compact?.artifact_path,
       });
       try {
-        const summaryRes = await fetch("http://localhost:8000/judge/summary");
+        const summaryRes = await fetch(apiUrl("/judge/summary"));
         if (summaryRes.ok) {
           const summaryData = await summaryRes.json();
           setJudgeSummary(summaryData?.summary || null);
@@ -526,7 +530,7 @@ export default function App() {
 
   const exportJudgeEvidence = async () => {
     try {
-      const res = await fetch("http://localhost:8000/judge/export/latest");
+      const res = await fetch(apiUrl("/judge/export/latest"));
       if (!res.ok) {
         throw new Error("No exported evidence available yet");
       }
