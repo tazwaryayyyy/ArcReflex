@@ -566,7 +566,7 @@ async def judge_run_sync(body: dict):
             red_team=red_team,
             red_team_degrade_at=red_team_degrade_at,
         )
-    except (RuntimeError, httpx.HTTPError) as exc:
+    except (RuntimeError, httpx.HTTPError, ValueError, TypeError, KeyError, OSError) as exc:
         judge_state.current_task_state = "failed"
         return JSONResponse(
             {
@@ -622,7 +622,11 @@ async def judge_export_latest():
 async def judge_summary():
     summary_path = JUDGE_ARTIFACT_DIR / "judge_summary.json"
     if not summary_path.exists():
-        return JSONResponse({"error": "judge summary not found"}, status_code=404)
+        return {
+            "summary": None,
+            "path": str(summary_path),
+            "available": False,
+        }
 
     try:
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -632,6 +636,7 @@ async def judge_summary():
     return {
         "summary": summary,
         "path": str(summary_path),
+        "available": True,
     }
 
 

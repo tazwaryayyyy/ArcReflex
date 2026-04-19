@@ -82,6 +82,10 @@ docker compose up --build
 If Render defaults to Python 3.14, builds may fail while compiling `pydantic-core` from source.
 This repo includes `runtime.txt` to pin a supported runtime and `requirements.render.txt` for web-service deploys.
 
+If you are configuring services manually in Render (without Blueprint), set:
+- `PYTHON_VERSION=3.11.9`
+- Build command: `pip install -r requirements.render.txt`
+
 For each Render backend service use:
 
 ```bash
@@ -96,7 +100,14 @@ Examples for `<service_module>`:
 - `agents.filter_a.main`
 - `agents.filter_b.main`
 - `agents.factcheck.main`
-```
+
+## Vercel Frontend Notes
+
+Use Vercel with Vite preset and set these environment variables:
+- `VITE_API_BASE_URL=https://arcreflex-orchestrator-7ryd.onrender.com`
+- `VITE_WS_URL=wss://arcreflex-orchestrator-7ryd.onrender.com/ws`
+
+The frontend reads those values at build time. After changing them, redeploy Vercel.
 
 ## One-Click Judge Run
 
@@ -134,6 +145,10 @@ npm run judge:verify
 Verifier output includes:
 - `VERIFIER_STATUS=PASS|FAIL`
 - `VERIFIER_SUMMARY_SHA256=<sha256>`
+
+Note on `GET /judge/summary`:
+- If no judge run has completed yet, summary can be unavailable.
+- The API returns `summary: null` and `available: false` until the first successful judge run writes artifacts.
 
 ## Judge Reproducibility Checklist
 
