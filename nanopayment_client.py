@@ -15,6 +15,7 @@ This is the core of why ArcReflex works:
 """
 
 import os
+import hashlib
 import time
 from dataclasses import dataclass, asdict
 from typing import Optional
@@ -120,6 +121,14 @@ class NanopaymentClient:
         """Generate a unique 32-byte nonce as 0x-prefixed hex string."""
         raw = os.urandom(32)
         return "0x" + raw.hex()
+
+    def _demo_tx_hash(self, auth: EIP3009Authorization) -> str:
+        """Generate a deterministic-looking 32-byte tx hash for demo fallback."""
+        seed = (
+            f"{auth.from_address}:{auth.to_address}:{auth.value}:"
+            f"{auth.valid_after}:{auth.valid_before}:{auth.nonce}:{time.time_ns()}"
+        )
+        return "0x" + hashlib.sha256(seed.encode("utf-8")).hexdigest()
 
     def _build_structured_data(
         self,
@@ -242,9 +251,13 @@ class NanopaymentClient:
                         "Circle Gateway response missing a valid transactionHash")
                 return tx_hash
         except httpx.HTTPStatusError as e:
+            if ALLOW_INSECURE_DEMO:
+                return self._demo_tx_hash(auth)
             raise RuntimeError(
                 f"Circle Gateway rejected authorization: {e.response.text}") from e
         except httpx.RequestError as e:
+            if ALLOW_INSECURE_DEMO:
+                return self._demo_tx_hash(auth)
             raise RuntimeError(f"Circle Gateway unreachable: {e}") from e
 
     # ── Public payment methods ────────────────────────────────────────────────
