@@ -1,0 +1,66 @@
+services:
+  - type: web
+    name: arcreflex-orchestrator
+    env: python
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: pip install -r requirements.render.txt
+    startCommand: uvicorn orchestrator.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    healthCheckPath: /health
+
+  - type: web
+    name: search-a
+    env: python
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: pip install -r requirements.render.txt
+    startCommand: uvicorn agents.search_a.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    healthCheckPath: /health
+
+  - type: web
+    name: search-b
+    env: python
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: pip install -r requirements.render.txt
+    startCommand: uvicorn agents.search_b.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    healthCheckPath: /health
+
+  - type: web
+    name: filter-a
+    env: python
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: pip install -r requirements.render.txt
+    startCommand: uvicorn agents.filter_a.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    healthCheckPath: /health
+
+  - type: web
+    name: filter-b
+    env: python
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: pip install -r requirements.render.txt
+    startCommand: uvicorn agents.filter_b.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    healthCheckPath: /health
+
+  - type: web
+    name: factcheck-451x
+    env: python
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: pip install -r requirements.render.txt
+    startCommand: uvicorn agents.factcheck.main:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    healthCheckPath: /health
