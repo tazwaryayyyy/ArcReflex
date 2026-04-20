@@ -31,6 +31,12 @@
 - Orchestrator remains a trusted payout policy authority.
 - This is trust-minimized settlement, not fully trustless orchestration.
 
+## Live vs Deterministic Paths (Explicit)
+
+- Live inference path: enabled when `ARCREFLEX_LIVE_INFERENCE=true` and model API settings are configured.
+- Deterministic fallback path: agents use templates/heuristics when live inference is disabled or provider calls fail.
+- Forced red-team mode is test instrumentation and should be labeled as such in demos.
+
 ## Near-Term Hardening
 
 - Policy commitments anchored on-chain.

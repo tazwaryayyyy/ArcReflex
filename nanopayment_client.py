@@ -221,16 +221,14 @@ class NanopaymentClient:
             "chainId":     ARC_CHAIN_ID,
         }
 
-        if not self.api_key and not ALLOW_INSECURE_DEMO:
+        if not self.api_key:
+            if ALLOW_INSECURE_DEMO:
+                # No Circle API key — return a deterministic demo hash immediately
+                # so local UI simulations work without any external credentials.
+                return self._demo_tx_hash(auth)
             raise RuntimeError(
                 "CIRCLE_API_KEY is required for submission mode. "
                 "Set ARCREFLEX_ALLOW_INSECURE_DEMO=true only for local UI simulation."
-            )
-
-        if not self.api_key and ALLOW_INSECURE_DEMO:
-            raise RuntimeError(
-                "Insecure demo mode is enabled but fake transaction hashes are disabled. "
-                "Provide CIRCLE_API_KEY to generate verifiable transactions."
             )
 
         try:

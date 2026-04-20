@@ -5,6 +5,8 @@
 - Settlement receipts: released payments emit transaction hashes for on-chain verification on Arc.
 - Deterministic quality threshold enforcement: orchestrator applies explicit threshold checks before release.
 - Evidence reproducibility: bundles include commit hash and runtime flags.
+- Live web grounding: search results retrieved from DuckDuckGo HTML at query time — not pre-seeded data.
+- Closed-loop reputation: failing providers receive a configurable reputation penalty and are re-ranked in the next auction without manual intervention.
 
 ## Trusted Today
 

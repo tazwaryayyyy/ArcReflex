@@ -123,6 +123,12 @@ One-command run + independent verification:
 npm run judge:prove
 ```
 
+Five-run zero-failure rehearsal check:
+
+```bash
+npm run judge:rehearse
+```
+
 Equivalent direct command:
 
 ```bash
@@ -149,6 +155,10 @@ Verifier output includes:
 Note on `GET /judge/summary`:
 - If no judge run has completed yet, summary can be unavailable.
 - The API returns `summary: null` and `available: false` until the first successful judge run writes artifacts.
+
+## Positioning Line (Use Consistently)
+
+ArcReflex delivers **quality-gated economic enforcement per agent action with verifiable settlement receipts**.
 
 ## Judge Reproducibility Checklist
 
@@ -194,10 +204,41 @@ Key environment variables used by payment/x402 flows include:
 - `CIRCLE_GATEWAY_URL`
 - `ARC_CHAIN_ID`
 - `USDC_ADDRESS`
+- `REPUTATION_PENALTY_ON_SWITCH`
+- `MIN_AGENT_REPUTATION`
 - `ARCREFLEX_STRICT_X402`
 - `ARCREFLEX_ALLOW_INSECURE_DEMO`
+- `ARCREFLEX_LIVE_INFERENCE`
+- `ARCREFLEX_MODEL_API_URL`
+- `ARCREFLEX_MODEL_API_KEY`
+- `ARCREFLEX_MODEL`
+- `ARCREFLEX_MODEL_TIMEOUT_SECONDS`
+- `ARCREFLEX_ENABLE_WEB_SEARCH`
+- `ARCREFLEX_WEB_SEARCH_TIMEOUT_SECONDS`
+- `ARCREFLEX_SEARCH_MODEL_MAX_RESULTS`
+- `ARCREFLEX_FILTER_MODEL_SAMPLE_EVERY`
+- `ARCREFLEX_FILTER_MODEL_MAX_ITEMS`
 
 For submission-grade behavior, keep strict mode enabled and insecure demo mode disabled.
+
+Live inference mode can be enabled with:
+- `ARCREFLEX_LIVE_INFERENCE=true`
+- valid model API URL/key values
+
+When disabled, agents fall back to deterministic heuristics/templates.
+
+Cost/latency tuning knobs:
+- `ARCREFLEX_ENABLE_WEB_SEARCH` turns on grounded DuckDuckGo retrieval for search agents.
+- `ARCREFLEX_WEB_SEARCH_TIMEOUT_SECONDS` bounds upstream search fetch latency.
+- `ARCREFLEX_SEARCH_MODEL_MAX_RESULTS` limits model-generated search items per request.
+- `ARCREFLEX_FILTER_MODEL_SAMPLE_EVERY` runs model scoring every Nth filter item.
+- `ARCREFLEX_FILTER_MODEL_MAX_ITEMS` caps total model-scored items per task.
+- `ARCREFLEX_MODEL_TIMEOUT_SECONDS` bounds per-model-call latency.
+
+Search strategy order:
+- grounded web results first
+- model-generated fill for remaining head slots
+- deterministic template tail as final fallback
 
 ## Evidence Output
 
@@ -207,7 +248,11 @@ When payment flow is exercised successfully, execution artifacts are written to:
 
 ## Red-Team Scenario
 
-Judge-mode runs force a deterministic degradation event (`red_team_degrade_at`) to demonstrate:
+Judge-mode supports two modes:
+- `red_team_mode=observed` (default): switch/withhold on observed quality trend
+- `red_team_mode=forced`: deterministic degradation trigger at `red_team_degrade_at`
+
+Both modes demonstrate:
 - degrade an agent
 - withhold payment on failed quality
 - switch to backup provider
@@ -230,10 +275,17 @@ See `docs/TRUST_MODEL_SLIDE.md` for explicit trust boundaries:
 - what is roadmap
 
 Additional judge materials:
+- `docs/JUDGE_INDEX.md`
 - `docs/JUDGE_BASELINE_TABLE.md`
 - `docs/DEMO_CHOREOGRAPHY.md`
 - `docs/ECONOMICS_SLIDE.md`
 - `docs/SECURITY_AND_ABUSE_POSTURE.md`
+- `docs/FINALS_READINESS_CHECKLIST.md`
+- `docs/BUSINESS_VALUE_PACK.md`
+- `docs/EXTERNAL_VALIDATION.md`
+- `docs/RELIABILITY_PROOF.md`
+- `docs/JUDGE_HARD_QA.md`
+- `docs/PITCH_90S.md`
 
 ## License
 

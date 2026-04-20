@@ -26,6 +26,9 @@ ORCHESTRATOR_KEY = os.getenv("ORCHESTRATOR_PRIVKEY", "0x" + "a" * 64)
 QUALITY_THRESHOLD = float(os.getenv("QUALITY_THRESHOLD", "0.70"))
 EVIDENCE_PATH = Path(os.getenv("EVIDENCE_PATH", "evidence.json"))
 JUDGE_ARTIFACT_DIR = Path(os.getenv("JUDGE_ARTIFACT_DIR", "artifacts/judge"))
+REPUTATION_PENALTY_ON_SWITCH = int(
+    os.getenv("REPUTATION_PENALTY_ON_SWITCH", "15"))
+MIN_AGENT_REPUTATION = int(os.getenv("MIN_AGENT_REPUTATION", "10"))
 
 
 def _git_commit() -> str:
@@ -204,7 +207,7 @@ class EvidenceStore:
             "ethereum_equivalent_usdc": stats.get("gas_cost_eth_equiv"),
             "ratio": round(
                 (stats.get("gas_cost_eth_equiv", 0.0) /
-                 stats.get("gas_cost_usdc", 1e-9)),
+                 max(stats.get("gas_cost_usdc") or 0.0, 1e-9)),
                 2,
             ),
         }
@@ -236,6 +239,7 @@ class TaskExecutor:
         task_text: str,
         red_team: bool = False,
         red_team_degrade_at: int = 120,
+        red_team_mode: str = "observed",
     ) -> dict:
         broadcast = self.payment.broadcast
         stage_ts: dict[str, float] = {"run_start": time.time()}
@@ -243,6 +247,8 @@ class TaskExecutor:
         switch_events: list[dict] = []
         filter_quality_before: list[float] = []
         filter_quality_after: list[float] = []
+        inference_trace: list[dict] = []
+        search_provenance: dict = {}
 
         stage_ts["search_start"] = time.time()
         search_winner = run_auction("search")
@@ -255,7 +261,9 @@ class TaskExecutor:
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.post(f"{search_info['url']}/search", json={"query": task_text, "n": 25})
             resp.raise_for_status()
-            results = resp.json().get("results", [])
+            search_payload = resp.json()
+            results = search_payload.get("results", [])
+            search_provenance = search_payload.get("provenance", {})
         stage_ts["search_end"] = time.time()
 
         for i, _ in enumerate(results):
@@ -281,13 +289,23 @@ class TaskExecutor:
         current_filter = filter_winner
         filter_items = [{"title": r.get("title", ""), "snippet": r.get(
             "snippet", "")} for r in results]
+        if not filter_items:
+            # Search returned nothing — use synthetic placeholders so the
+            # filter phase still runs and payment counters stay correct.
+            filter_items = [{"title": f"Synthetic item {i + 1}",
+                             "snippet": "No search results available."} for i in range(25)]
+        _base = filter_items[:]
         while len(filter_items) < 200:
-            filter_items.extend(filter_items)
+            filter_items.extend(_base)
         filter_items = filter_items[:200]
 
         for i in range(200):
             info = AGENTS[current_filter]
             score = 0.82
+            relevance_score = 0.70
+            decision_reason = "fallback_default"
+            item_provenance = {"live_inference": False,
+                               "reason": "fallback_default"}
             try:
                 async with httpx.AsyncClient(timeout=6.0) as client:
                     f_resp = await client.post(
@@ -295,18 +313,60 @@ class TaskExecutor:
                         json={"items": [filter_items[i]], "start_index": i},
                     )
                     f_resp.raise_for_status()
-                    filtered = f_resp.json().get("filtered", [])
+                    filter_payload = f_resp.json()
+                    filtered = filter_payload.get("filtered", [])
                     if filtered:
-                        score = float(filtered[0].get("quality_score", 0.82))
+                        row = filtered[0]
+                        score = float(row.get("quality_score", 0.82))
+                        relevance_score = float(
+                            row.get("relevance_score", 0.70))
+                        decision_reason = str(
+                            row.get("reason", "model_or_heuristic_score"))
+                        item_provenance = row.get("provenance", filter_payload.get("meta", {})) or {
+                            "live_inference": False,
+                            "reason": "missing_provenance",
+                        }
             except httpx.HTTPError:
                 score = 0.6 if (
                     not switched and current_filter == "filter_a") else 0.82
+                decision_reason = "filter_http_error_fallback"
 
-            # Deterministic red-team degradation event for judge demo.
-            if red_team and (not switched) and current_filter == "filter_a" and i == red_team_degrade_at:
+            # Forced deterministic degradation for explicit test mode only.
+            forced_mode = red_team and red_team_mode == "forced"
+            if forced_mode and (not switched) and current_filter == "filter_a" and i == red_team_degrade_at:
                 score = min(score, QUALITY_THRESHOLD - 0.09)
+                decision_reason = "forced_red_team_degradation"
 
-            if score < QUALITY_THRESHOLD and not switched:
+            if current_filter == "filter_a":
+                filter_quality_before.append(score)
+            else:
+                filter_quality_after.append(score)
+
+            if not switched:
+                active_window = filter_quality_before if current_filter == "filter_a" else filter_quality_after
+                window = active_window[-8:]
+                rolling_avg = sum(window) / len(window) if window else score
+                recent_low = min(
+                    active_window[-3:]) if len(active_window) >= 3 else score
+                should_switch = (
+                    score < QUALITY_THRESHOLD
+                    or (len(window) >= 6 and rolling_avg < QUALITY_THRESHOLD)
+                    or recent_low < (QUALITY_THRESHOLD - 0.04)
+                )
+            else:
+                rolling_avg = score
+                should_switch = False
+
+            inference_trace.append({
+                "item_index": i,
+                "agent": current_filter,
+                "quality_score": round(score, 3),
+                "relevance_score": round(relevance_score, 3),
+                "reason": decision_reason,
+                "provenance": item_provenance,
+            })
+
+            if should_switch and not switched:
                 withheld_tx = await self.payment.withhold_payment(
                     from_label="Orchestrator",
                     to_label=current_filter,
@@ -321,26 +381,36 @@ class TaskExecutor:
                     "agent": current_filter,
                     "decision": "withheld",
                     "quality_score": round(score, 3),
+                    "rolling_avg": round(rolling_avg, 3),
                     "threshold": QUALITY_THRESHOLD,
-                    "reason": f"Quality {score:.2f} < threshold {QUALITY_THRESHOLD:.2f}",
+                    "reason": f"Score={score:.2f}, rolling_avg={rolling_avg:.2f}, threshold={QUALITY_THRESHOLD:.2f}",
                     "timestamp": time.time(),
                 })
 
                 failed_agent = current_filter
+                old_rep = int(AGENTS[failed_agent].get("reputation", 0))
+                AGENTS[failed_agent]["reputation"] = max(
+                    MIN_AGENT_REPUTATION,
+                    old_rep - REPUTATION_PENALTY_ON_SWITCH,
+                )
                 current_filter = run_auction("filter", exclude=failed_agent)
                 switched = True
 
                 before = sum(
                     filter_quality_before[-10:]) / max(len(filter_quality_before[-10:]), 1)
-                after = score
+                after = sum(
+                    filter_quality_after[-10:]) / max(len(filter_quality_after[-10:]), 1)
                 switch_events.append({
                     "from": failed_agent,
                     "to": current_filter,
                     "item_index": i,
                     "quality_at_switch": round(score, 3),
+                    "reputation_before": old_rep,
+                    "reputation_after": int(AGENTS[failed_agent]["reputation"]),
                     "quality_before_window": round(before, 3),
                     "quality_after_window": round(after, 3),
                     "improvement_delta": round(after - before, 3),
+                    "mode": red_team_mode,
                     "timestamp": time.time(),
                 })
 
@@ -355,11 +425,6 @@ class TaskExecutor:
                         "task_id": task_id,
                     },
                 })
-
-            if current_filter == "filter_a":
-                filter_quality_before.append(score)
-            else:
-                filter_quality_after.append(score)
 
             paid_tx = await self.payment.pay(
                 recipient_wallet=AGENTS[current_filter]["wallet"],
@@ -380,7 +445,8 @@ class TaskExecutor:
         stage_ts["run_end"] = time.time()
 
         released_hashes = [
-            t.get("hash") for t in txs if t.get("status") == "released"
+            t.get("hash") for t in txs
+            if t.get("status") == "released" and t.get("hash")
         ]
         checks = _build_pass_fail(
             red_team=red_team,
@@ -430,6 +496,12 @@ class TaskExecutor:
                     "ARCREFLEX_ALLOW_INSECURE_DEMO": os.getenv("ARCREFLEX_ALLOW_INSECURE_DEMO", "false"),
                     "ARC_CHAIN_ID": os.getenv("ARC_CHAIN_ID", "1234567"),
                 },
+            },
+            "model_provenance": {
+                "search": search_provenance,
+                "filter_trace_sample": inference_trace[:20],
+                "live_inference_items": sum(1 for x in inference_trace if (x.get("provenance") or {}).get("live_inference")),
+                "total_items_scored": len(inference_trace),
             },
             "checks": checks,
             "overall_pass": overall_pass,
@@ -501,10 +573,12 @@ async def submit_task(body: dict):
     judge_state.current_task_text = task_text
     asyncio.create_task(task_executor.execute(task_id, task_text))
 
+    _ws_url = os.getenv("VITE_WS_URL") or os.getenv(
+        "WS_URL", "ws://localhost:8000/ws")
     return {
         "task_id": task_id,
         "status": "started",
-        "ws_url": "ws://localhost:8000/ws",
+        "ws_url": _ws_url,
     }
 
 
@@ -549,6 +623,9 @@ async def judge_run_sync(body: dict):
     task_text = body.get("text", "ArcReflex deterministic judge run").strip()
     red_team = bool(body.get("red_team", True))
     red_team_degrade_at = int(body.get("red_team_degrade_at", 120))
+    red_team_mode = str(body.get("red_team_mode", "observed")).strip().lower()
+    if red_team_mode not in {"observed", "forced"}:
+        return JSONResponse({"error": "red_team_mode must be 'observed' or 'forced'"}, status_code=400)
 
     if not task_text:
         return JSONResponse({"error": "task text is required"}, status_code=400)
@@ -565,6 +642,7 @@ async def judge_run_sync(body: dict):
             task_text=task_text,
             red_team=red_team,
             red_team_degrade_at=red_team_degrade_at,
+            red_team_mode=red_team_mode,
         )
     except (RuntimeError, httpx.HTTPError, ValueError, TypeError, KeyError, OSError) as exc:
         judge_state.current_task_state = "failed"
