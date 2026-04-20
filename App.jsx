@@ -38,10 +38,13 @@ const C = {
   text:"#E2E2F2", muted:"#5A5A90", dim:"#2A2A4A",
   violet:"#8B5CF6", green:"#00D97E", amber:"#F5A623", blue:"#38BDF8", red:"#F43F5E", purple:"#A78BFA",
 };
+// Bar heights use log₁₀ scale: bar = round(190 × log10(v/Arc_v) / log10(Eth_v/Arc_v))
+// Ethereum: log10(477/0.000225)=6.326 → 190; Arbitrum: log10(22.5/0.000225)=5.0 → 150
+// Solana:   log10(0.56/0.000225)=3.396 → 102; Arc: minimum 3px for visibility
 const GAS = [
   { n:"Ethereum L1", v:477.00,   bar:190, c:"#F43F5E" },
-  { n:"Arbitrum",    v:22.50,    bar:82,  c:"#F97316" },
-  { n:"Solana",      v:0.56,     bar:26,  c:"#EAB308" },
+  { n:"Arbitrum",    v:22.50,    bar:150, c:"#F97316" },
+  { n:"Solana",      v:0.56,     bar:102, c:"#EAB308" },
   { n:"Arc ✓",       v:0.000225, bar:3,   c:"#00D97E" },
 ];
 
@@ -67,8 +70,9 @@ export default function ArcReflex() {
   const wsRef   = useRef(null);
 
   // ── WebSocket connection ───────────────────────────────────────────────────
+  const WS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WS_URL) || "ws://localhost:8000/ws";
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws");
+    const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
     ws.onopen = () => { setWsConnected(true); setWsMode("live"); };
     ws.onclose = () => { setWsConnected(false); setWsMode("simulation"); };
@@ -233,7 +237,10 @@ export default function ArcReflex() {
     }
 
     setUsyc(0.0000021);
-    setReport(MOCK_REPORT(taskInput));
+    // txs state lags one render; compute totals inline from the scripted simulation
+    const simTxCount = 1 + 1 + 150 + 25 + 25; // search_a + search_b + filter_a*150 + filter_b*50 + factcheck/misc ≈ 225
+    const simTotal   = parseFloat((0.0002 + 0.00022 + 150*0.0001 + 50*0.00012).toFixed(6));
+    setReport(MOCK_REPORT(taskInput, { txCount: simTxCount, totalUsd: simTotal, filtered: 200 }));
     setStatus("✓ Task complete · 225 transactions · $0.025 total · USYC +$0.0000021");
     setPhase("complete");
   };
@@ -318,7 +325,7 @@ export default function ArcReflex() {
         <div style={{display:"flex",alignItems:"center",gap:6,padding:"3px 10px",borderRadius:4,background:wsConnected?"#041A0A":"#0F0F20",border:`1px solid ${wsConnected?C.green:C.dim}`}}>
           <div style={{width:5,height:5,borderRadius:"50%",background:wsConnected?C.green:C.muted,animation:wsConnected?"blink 2s ease-in-out infinite":"none"}}/>
           <span style={{fontSize:9,fontFamily:"'JetBrains Mono',monospace",color:wsConnected?C.green:C.muted}}>
-            {wsConnected ? "LIVE ws://localhost:8000" : "SIMULATION MODE"}
+            {wsConnected ? `LIVE ${WS_URL}` : "SIMULATION MODE"}
           </span>
         </div>
         <div style={{flex:1}}/>
@@ -477,7 +484,10 @@ export default function ArcReflex() {
           {/* ── ECONOMY TAB ── */}
           {tab==="economy" && (
             <div style={{flex:1,overflowY:"auto",padding:24}}>
-              <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Gas Cost — 225 Transactions</div>
+              <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:4}}>
+                <div style={{fontSize:14,fontWeight:700}}>Gas Cost — 225 Transactions</div>
+                <div style={{fontSize:9,color:C.muted,fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.08em"}}>log₁₀ scale</div>
+              </div>
               <div style={{fontSize:11,color:C.muted,marginBottom:28,fontFamily:"'JetBrains Mono',monospace"}}>
                 Actual value of work delivered: $0.025
               </div>
@@ -646,16 +656,19 @@ export default function ArcReflex() {
 }
 
 // ── Mock report ────────────────────────────────────────────────────────────────
-function MOCK_REPORT(task) {
+function MOCK_REPORT(task, runData = {}) {
+  const txCount  = runData.txCount  ?? 225;
+  const totalUsd = runData.totalUsd ?? 0.025;
+  const filtered = runData.filtered ?? 200;
   return {
     title: `Competitive Analysis: ${task}`,
     sections: [
-      {heading:"Market Overview",content:`The ${task} market shows rapid fragmentation across protocol, tooling, and application layers. Analysis of 200 filtered sources reveals three dominant positions and six emerging challengers with 340% YoY developer adoption growth.`},
+      {heading:"Market Overview",content:`The ${task} market shows rapid fragmentation across protocol, tooling, and application layers. Analysis of ${filtered} filtered sources reveals three dominant positions and six emerging challengers with 340% YoY developer adoption growth.`},
       {heading:"Key Players",content:"Incumbent leaders command 68% of mindshare through documentation quality. Second-tier challengers differentiate on performance (3.2× throughput) and cost. Only Arc-native protocols achieve sub-cent per-action settlement — the prerequisite for granular agent economies."},
-      {heading:"Technical Comparison",content:"Payment primitives are the clearest differentiator. All Ethereum-based competitors fail the economic viability test at 200+ transactions per task. On Ethereum: $477 gas for this task. On Arc: $0.000225. The difference is not marginal — it is the difference between impossible and inevitable."},
+      {heading:"Technical Comparison",content:`Payment primitives are the clearest differentiator. All Ethereum-based competitors fail the economic viability test at ${txCount}+ transactions per task. On Ethereum: $${(txCount * 2.12).toFixed(0)} gas for this task. On Arc: $${totalUsd.toFixed(6)}. The difference is not marginal — it is the difference between impossible and inevitable.`},
       {heading:"Market Gaps",content:"Four gaps remain unaddressed: (1) per-action on-chain settlement at scale, (2) reputation-staked quality enforcement with zero-gas withholding, (3) idle treasury yield during computation via USYC, (4) HTTP-native payment discovery via x402. All four are ArcReflex-exclusive primitives."},
       {heading:"Recommendations",content:"Adopt ArcReflex as the payment and accountability layer. The combination of Circle Nanopayments + ERC-8004 reputation + USYC yield produces agents with economic skin in the game — the missing primitive for production multi-agent deployment."},
     ],
-    metadata:{sources_searched:25,results_filtered:200,total_transactions:225,total_cost_usdc:0.025},
+    metadata:{sources_searched:25,results_filtered:filtered,total_transactions:txCount,total_cost_usdc:totalUsd},
   };
 }
