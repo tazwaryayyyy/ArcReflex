@@ -12,8 +12,11 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
 AGENT_ID = "filter_a"
 
+
 @app.get("/")
-def health(): return {"status": "ok", "agent": AGENT_ID}
+def root(): return {"status": "ok", "agent": AGENT_ID}
+
+
 AGENT_WALLET = os.getenv("FILTER_A_WALLET", "0xFILTER_A")
 PRICE_PER_ITEM = 0.0001
 REPUTATION = 81

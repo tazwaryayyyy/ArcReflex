@@ -15,8 +15,11 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
 AGENT_ID = "search_a"
 
+
 @app.get("/")
-def health(): return {"status": "ok", "agent": AGENT_ID}
+def root(): return {"status": "ok", "agent": AGENT_ID}
+
+
 AGENT_WALLET = os.getenv("SEARCH_A_WALLET", "0xSEARCH_A")
 PRICE_USDC = 0.0002
 REPUTATION = 72

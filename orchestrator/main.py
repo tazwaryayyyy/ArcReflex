@@ -23,8 +23,11 @@ app.add_middleware(
 
 ORCHESTRATOR_WALLET = os.getenv("ORCHESTRATOR_WALLET", "0xORCHESTRATOR")
 
+
 @app.get("/")
-def health(): return {"status": "ok", "service": "orchestrator"}
+def root(): return {"status": "ok", "service": "orchestrator"}
+
+
 ORCHESTRATOR_KEY = os.getenv("ORCHESTRATOR_PRIVKEY", "0x" + "a" * 64)
 QUALITY_THRESHOLD = float(os.getenv("QUALITY_THRESHOLD", "0.70"))
 EVIDENCE_PATH = Path(os.getenv("EVIDENCE_PATH", "evidence.json"))
