@@ -300,14 +300,20 @@ export default function App() {
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
       switch (data.type) {
-        case "nanopayment":
-          addTx({ ...data.payload, withheld: false });
-          addPulse({ edge: data.payload.edge, color: COLORS.green });
+        case "nanopayment": {
+          const raw = data.payload || data.tx || {};
+          const payload = { ...raw, from: raw.from || raw.from_agent, to: raw.to || raw.to_agent, amount: raw.amount ?? raw.amount_usdc };
+          addTx({ ...payload, withheld: false });
+          if (payload.edge) addPulse({ edge: payload.edge, color: COLORS.green });
           break;
-        case "payment_withheld":
-          addTx({ ...data.payload, withheld: true });
-          addPulse({ edge: data.payload.edge, color: COLORS.red });
+        }
+        case "payment_withheld": {
+          const raw = data.payload || data.tx || {};
+          const payload = { ...raw, from: raw.from || raw.from_agent, to: raw.to || raw.to_agent, amount: raw.amount ?? raw.amount_usdc };
+          addTx({ ...payload, withheld: true });
+          if (payload.edge) addPulse({ edge: payload.edge, color: COLORS.red });
           break;
+        }
         case "agent_switch":
           setNodeState(s => ({ ...s, [data.payload.from]: "failed", [data.payload.to]: "replacement" }));
           setRepState(s => ({
@@ -1206,7 +1212,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 500, flexShrink: 0, color: tx.withheld ? COLORS.red : COLORS.green }}>
-                    {tx.withheld ? "✗" : tx.amount >= 1 ? `$${Number(tx.amount).toFixed(2)}` : `$${Number(tx.amount).toFixed(6)}`}
+                    {(() => { const amt = tx.amount ?? tx.amount_usdc ?? 0; return tx.withheld ? "✗" : amt >= 1 ? `$${Number(amt).toFixed(2)}` : `$${Number(amt).toFixed(6)}`; })()}
                   </div>
                 </div>
               ))
