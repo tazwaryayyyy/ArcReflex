@@ -13,7 +13,7 @@ version: "3.9"
 
 x-common-env: &common-env
   ARC_RPC_URL: ${ARC_RPC_URL:-https://rpc.arc.circle.com}
-  ARC_CHAIN_ID: ${ARC_CHAIN_ID:-1234567}
+  ARC_CHAIN_ID: ${ARC_CHAIN_ID:-2040}
   USDC_ADDRESS: ${USDC_ADDRESS:-0x...}
   CIRCLE_API_KEY: ${CIRCLE_API_KEY:-}
   CIRCLE_GATEWAY_URL: ${CIRCLE_GATEWAY_URL:-https://api.circle.com/v1/w3s}

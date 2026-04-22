@@ -36,7 +36,7 @@ CIRCLE_GATEWAY_URL = os.getenv(
     "CIRCLE_GATEWAY_URL", "https://api.circle.com/v1/w3s/nanopayments")
 ORCHESTRATOR_WALLET = os.getenv(
     "ORCHESTRATOR_WALLET", "0x0000000000000000000000000000000000000001")
-ARC_CHAIN_ID = os.getenv("ARC_CHAIN_ID", "1234567")
+ARC_CHAIN_ID = os.getenv("ARC_CHAIN_ID", "2040")
 USDC_ADDRESS = os.getenv("USDC_ADDRESS", "0x...")
 CIRCLE_API_KEY = os.getenv("CIRCLE_API_KEY", "")
 STRICT_X402 = os.getenv("ARCREFLEX_STRICT_X402", "true").lower() == "true"

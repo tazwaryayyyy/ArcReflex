@@ -508,7 +508,7 @@ class TaskExecutor:
                     "QUALITY_THRESHOLD": QUALITY_THRESHOLD,
                     "ARCREFLEX_STRICT_X402": os.getenv("ARCREFLEX_STRICT_X402", "true"),
                     "ARCREFLEX_ALLOW_INSECURE_DEMO": os.getenv("ARCREFLEX_ALLOW_INSECURE_DEMO", "false"),
-                    "ARC_CHAIN_ID": os.getenv("ARC_CHAIN_ID", "1234567"),
+                    "ARC_CHAIN_ID": os.getenv("ARC_CHAIN_ID", "2040"),
                 },
             },
             "model_provenance": {

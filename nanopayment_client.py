@@ -27,7 +27,7 @@ import httpx
 CIRCLE_API_KEY = os.getenv("CIRCLE_API_KEY", "")
 CIRCLE_GATEWAY_URL = os.getenv(
     "CIRCLE_GATEWAY_URL", "https://api.circle.com/v1/w3s")
-ARC_CHAIN_ID = int(os.getenv("ARC_CHAIN_ID", "1234567"))
+ARC_CHAIN_ID = int(os.getenv("ARC_CHAIN_ID", "2040"))
 USDC_ADDRESS = os.getenv(
     "USDC_ADDRESS", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
 ALLOW_INSECURE_DEMO = os.getenv(
