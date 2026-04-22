@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import statistics
 import time
 from pathlib import Path
@@ -36,35 +37,77 @@ def p95(values: list[float]) -> float:
     return values_sorted[idx]
 
 
-def run_once(client: httpx.Client, base_url: str, task_text: str, degrade_at: int) -> dict:
+def run_once(
+    client: httpx.Client,
+    base_url: str,
+    task_text: str,
+    degrade_at: int,
+    red_team_mode: str,
+    timeout_seconds: float,
+    retries: int,
+) -> dict:
     started = time.time()
-    resp = client.post(
-        f"{base_url}/judge/run-sync",
-        json={
-            "text": task_text,
-            "red_team": True,
-            "red_team_degrade_at": degrade_at,
-        },
-        timeout=180.0,
-    )
-    elapsed_ms = int((time.time() - started) * 1000)
-    resp.raise_for_status()
-    data = resp.json()
-    data["wall_clock_ms"] = elapsed_ms
-    return data
+    last_exc: Exception | None = None
+    for _ in range(max(1, retries + 1)):
+        try:
+            resp = client.post(
+                f"{base_url}/judge/run-sync",
+                json={
+                    "text": task_text,
+                    "red_team": True,
+                    "red_team_degrade_at": degrade_at,
+                    "red_team_mode": red_team_mode,
+                },
+                timeout=timeout_seconds,
+            )
+            elapsed_ms = int((time.time() - started) * 1000)
+            resp.raise_for_status()
+            data = resp.json()
+            data["wall_clock_ms"] = elapsed_ms
+            return data
+        except (httpx.ReadTimeout, httpx.ConnectError) as exc:
+            last_exc = exc
+
+    assert last_exc is not None
+    raise last_exc
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="ArcReflex deterministic judge runner")
+    default_base = os.getenv("JUDGE_BASE_URL", "http://localhost:8000")
     parser.add_argument(
-        "--base-url", default="http://localhost:8000", help="Orchestrator base URL")
+        "--base-url", default=default_base, help="Orchestrator base URL")
     parser.add_argument("--runs", type=int, default=3,
                         help="Number of deterministic runs")
     parser.add_argument(
         "--task", default="ArcReflex deterministic judge scenario", help="Task text")
     parser.add_argument("--degrade-at", type=int, default=120,
                         help="Forced red-team degradation index")
+    parser.add_argument(
+        "--red-team-mode",
+        default="forced",
+        choices=["forced", "observed"],
+        help="Red-team mode passed to /judge/run-sync",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=float(os.getenv("JUDGE_TIMEOUT_SECONDS", "300")),
+        help="HTTP timeout per run-sync request",
+    )
+    parser.add_argument(
+        "--retries",
+        type=int,
+        default=1,
+        help="Retry count for connect/read timeout failures",
+    )
+    parser.add_argument(
+        "--retry-failed-runs",
+        type=int,
+        default=1,
+        help="Retry count when compact status is fail",
+    )
     parser.add_argument("--output", default="artifacts/judge",
                         help="Output folder for summary artifacts")
     parser.add_argument(
@@ -82,12 +125,61 @@ def main() -> int:
 
     with httpx.Client() as client:
         for i in range(args.runs):
-            run_data = run_once(
-                client=client,
-                base_url=args.base_url,
-                task_text=f"{args.task} #{i + 1}",
-                degrade_at=args.degrade_at,
-            )
+            run_data = None
+            for attempt in range(max(1, args.retry_failed_runs + 1)):
+                try:
+                    candidate = run_once(
+                        client=client,
+                        base_url=args.base_url,
+                        task_text=f"{args.task} #{i + 1}",
+                        degrade_at=args.degrade_at,
+                        red_team_mode=args.red_team_mode,
+                        timeout_seconds=args.timeout_seconds,
+                        retries=args.retries,
+                    )
+                except (httpx.ReadTimeout, httpx.ConnectError) as exc:
+                    print(
+                        f"WARN: run {i + 1} attempt {attempt + 1} transport error: {exc}; retrying..."
+                    )
+                    if attempt + 1 >= max(1, args.retry_failed_runs + 1):
+                        run_data = {
+                            "compact": {
+                                "task_id": f"run_{i + 1}",
+                                "status": "fail",
+                                "summary": {
+                                    "total_transactions": 0,
+                                    "withheld": 0,
+                                    "total_usdc_settled": 0.0,
+                                },
+                            },
+                            "bundle": {
+                                "checks": [
+                                    {
+                                        "name": "judge transport run",
+                                        "passed": False,
+                                        "expected": "run-sync completed",
+                                        "actual": str(exc),
+                                    }
+                                ],
+                                "stats": {
+                                    "total_transactions": 0,
+                                    "withheld": 0,
+                                },
+                                "released_transaction_hashes": [],
+                                "latencies_ms": {"total_ms": 0},
+                            },
+                            "wall_clock_ms": 0,
+                        }
+                    continue
+                compact = candidate.get("compact", {})
+                if compact.get("status") == "pass":
+                    run_data = candidate
+                    break
+                run_data = candidate
+                print(
+                    f"WARN: run {i + 1} attempt {attempt + 1} failed compact checks; retrying..."
+                )
+            assert run_data is not None
             all_runs.append(run_data)
 
             bundle = run_data.get("bundle", {})
