@@ -500,7 +500,7 @@ export default function App() {
           text: (taskInput || "ArcReflex deterministic judge run").trim(),
           red_team: true,
           red_team_degrade_at: 120,
-          red_team_mode: "observed",
+          red_team_mode: "forced",
         }),
       });
       const data = await res.json();

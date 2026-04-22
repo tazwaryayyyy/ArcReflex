@@ -273,7 +273,7 @@ class TaskExecutor:
         stage_ts["search_end"] = time.time()
 
         for i, _ in enumerate(results):
-            tx = await self.payment.pay(
+            await self.payment.pay(
                 recipient_wallet=search_info["wallet"],
                 amount_usdc=search_info["price_per_item"],
                 from_label="Orchestrator",
@@ -282,7 +282,6 @@ class TaskExecutor:
                 task_id=task_id,
                 item_index=i,
             )
-            await broadcast({"type": "nanopayment", "payload": tx.to_dict()})
 
         stage_ts["filter_start"] = time.time()
         filter_winner = run_auction("filter")
@@ -373,7 +372,7 @@ class TaskExecutor:
             })
 
             if should_switch and not switched:
-                withheld_tx = await self.payment.withhold_payment(
+                await self.payment.withhold_payment(
                     from_label="Orchestrator",
                     to_label=current_filter,
                     amount_usdc=info["price_per_item"],
@@ -381,7 +380,6 @@ class TaskExecutor:
                     task_id=task_id,
                     item_index=i,
                 )
-                await broadcast({"type": "payment_withheld", "payload": withheld_tx.to_dict()})
                 quality_decisions.append({
                     "item_index": i,
                     "agent": current_filter,
@@ -432,7 +430,7 @@ class TaskExecutor:
                     },
                 })
 
-            paid_tx = await self.payment.pay(
+            await self.payment.pay(
                 recipient_wallet=AGENTS[current_filter]["wallet"],
                 amount_usdc=AGENTS[current_filter]["price_per_item"],
                 from_label="Orchestrator",
@@ -441,9 +439,19 @@ class TaskExecutor:
                 task_id=task_id,
                 item_index=i,
             )
-            await broadcast({"type": "nanopayment", "payload": paid_tx.to_dict()})
 
         stage_ts["filter_end"] = time.time()
+
+        # Update recovery metrics after the full filter phase so "after" window
+        # reflects real post-switch performance rather than an empty placeholder.
+        if switch_events and filter_quality_after:
+            before = sum(filter_quality_before[-10:]) / \
+                max(len(filter_quality_before[-10:]), 1)
+            after = sum(filter_quality_after[-10:]) / \
+                max(len(filter_quality_after[-10:]), 1)
+            switch_events[-1]["quality_before_window"] = round(before, 3)
+            switch_events[-1]["quality_after_window"] = round(after, 3)
+            switch_events[-1]["improvement_delta"] = round(after - before, 3)
 
         stats = self.payment.get_stats()
         txs = self.payment.get_transactions(limit=1000)
