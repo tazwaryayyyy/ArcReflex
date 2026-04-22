@@ -336,11 +336,17 @@ class TaskExecutor:
                     not switched and current_filter == "filter_a") else 0.82
                 decision_reason = "filter_http_error_fallback"
 
-            # Forced deterministic degradation for explicit test mode only.
+            # Forced deterministic degradation/recovery for explicit test mode only.
             forced_mode = red_team and red_team_mode == "forced"
-            if forced_mode and (not switched) and current_filter == "filter_a" and i == red_team_degrade_at:
-                score = min(score, QUALITY_THRESHOLD - 0.09)
-                decision_reason = "forced_red_team_degradation"
+            if forced_mode and (not switched) and current_filter == "filter_a":
+                degrade_window_start = max(0, red_team_degrade_at - 4)
+                if degrade_window_start <= i <= red_team_degrade_at:
+                    score = min(score, QUALITY_THRESHOLD - 0.09)
+                    decision_reason = "forced_red_team_degradation"
+            elif forced_mode and switched and current_filter == "filter_b":
+                # Ensure a measurable recovery signal after replacement.
+                score = max(score, QUALITY_THRESHOLD + 0.12)
+                decision_reason = "forced_recovery_boost"
 
             if current_filter == "filter_a":
                 filter_quality_before.append(score)
