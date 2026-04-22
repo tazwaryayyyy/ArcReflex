@@ -11,6 +11,9 @@ app = FastAPI(title="ArcReflex Filter Agent B", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
 AGENT_ID = "filter_b"
+
+@app.get("/")
+def health(): return {"status": "ok", "agent": AGENT_ID}
 AGENT_WALLET = os.getenv("FILTER_B_WALLET", "0xFILTER_B")
 PRICE_PER_ITEM = 0.00012
 REPUTATION = 58

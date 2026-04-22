@@ -11,6 +11,9 @@ app = FastAPI(title="ArcReflex Fact-Check Agent", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
 AGENT_ID = "factcheck"
+
+@app.get("/")
+def health(): return {"status": "ok", "agent": AGENT_ID}
 ORCHESTRATOR_WALLET = os.getenv("ORCHESTRATOR_WALLET", "0xORCHESTRATOR")
 FACT_CHECK_PRICE = 0.005
 
