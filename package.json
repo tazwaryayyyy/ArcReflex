@@ -7,7 +7,9 @@
     "dev": "vite --port 5000 --host 0.0.0.0",
     "build": "vite build",
     "judge:run": "python judge_run.py --runs 3",
-    "judge:run:render": "python judge_run.py --runs 3 --base-url https://arcreflex-orchestrator-7ryd.onrender.com --timeout-seconds 300 --red-team-mode forced --retry-failed-runs 2",
+    "judge:run:render": "python judge_run.py --runs 3 --base-url https://arcreflex-orchestrator-7ryd.onrender.com --timeout-seconds 300 --red-team-mode forced --retry-failed-runs 2 --output artifacts/judge_render --clean-output",
+    "judge:verify:render": "python verify_evidence.py --summary artifacts/judge_render/judge_summary.json --bundle-glob artifacts/judge_render/bundle_*.json --expected-runs 3",
+    "judge:prove:render": "python judge_run.py --runs 3 --base-url https://arcreflex-orchestrator-7ryd.onrender.com --timeout-seconds 300 --red-team-mode forced --retry-failed-runs 2 --output artifacts/judge_render --clean-output && python verify_evidence.py --summary artifacts/judge_render/judge_summary.json --bundle-glob artifacts/judge_render/bundle_*.json --expected-runs 3",
     "judge:rehearse": "python judge_rehearse.py --runs 5",
     "judge:verify": "python verify_evidence.py --expected-runs 3",
     "judge:prove": "python judge_run.py --runs 3 && python verify_evidence.py --expected-runs 3"

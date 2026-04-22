@@ -111,6 +111,11 @@ def main() -> int:
     parser.add_argument("--output", default="artifacts/judge",
                         help="Output folder for summary artifacts")
     parser.add_argument(
+        "--clean-output",
+        action="store_true",
+        help="Delete existing bundle_*.json and judge_summary.json in output folder before running",
+    )
+    parser.add_argument(
         "--print-hash-only",
         action="store_true",
         help="Print only the summary hash line for CI/judge scripts",
@@ -119,6 +124,11 @@ def main() -> int:
 
     out_dir = Path(args.output)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.clean_output:
+        for path in out_dir.glob("bundle_*.json"):
+            path.unlink(missing_ok=True)
+        (out_dir / "judge_summary.json").unlink(missing_ok=True)
 
     all_runs = []
     failures = 0
