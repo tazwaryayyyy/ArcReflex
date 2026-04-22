@@ -607,6 +607,7 @@ async def health():
         "status": "ok",
         "service": "ArcReflex Orchestrator",
         "version": "2.1.0",
+        "demo_mode": os.getenv("ARCREFLEX_ALLOW_INSECURE_DEMO", "false"),
         "agents": {k: {"active": v["active"], "reputation": v["reputation"]} for k, v in AGENTS.items()},
         "stats": payment_client.get_stats(),
     }
