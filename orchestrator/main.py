@@ -39,7 +39,7 @@ MIN_AGENT_REPUTATION = int(os.getenv("MIN_AGENT_REPUTATION", "10"))
 
 # --- Groq LLM quality scoring (inline, no agent service needed) ---
 _GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
-_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
+_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 _GROQ_SAMPLE_EVERY = int(
     os.getenv("GROQ_SAMPLE_EVERY", "4"))  # score 1 in 4 items
 _GROQ_MAX_ITEMS = int(os.getenv("GROQ_MAX_ITEMS", "50"))
@@ -749,8 +749,10 @@ async def groq_test():
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(
                 "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={"model": _GROQ_MODEL, "messages": [{"role": "user", "content": "Say OK"}], "max_tokens": 5},
+                headers={"Authorization": f"Bearer {api_key}",
+                         "Content-Type": "application/json"},
+                json={"model": _GROQ_MODEL, "messages": [
+                    {"role": "user", "content": "Say OK"}], "max_tokens": 5},
             )
             raw_status = resp.status_code
             raw_body = resp.text[:400]
