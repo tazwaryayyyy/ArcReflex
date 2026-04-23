@@ -47,7 +47,8 @@ _GROQ_MAX_ITEMS = int(os.getenv("GROQ_MAX_ITEMS", "50"))
 
 async def _groq_score_item(item: dict) -> tuple[float, float, str]:
     """Call Groq to score a single search result. Returns (quality, relevance, reason)."""
-    if not _GROQ_API_KEY:
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not api_key:
         return 0.0, 0.0, "groq_disabled"
     title = str(item.get("title", ""))[:120]
     snippet = str(item.get("snippet", ""))[:300]
@@ -60,7 +61,7 @@ async def _groq_score_item(item: dict) -> tuple[float, float, str]:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
                 "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {_GROQ_API_KEY}",
+                headers={"Authorization": f"Bearer {api_key}",
                          "Content-Type": "application/json"},
                 json={"model": _GROQ_MODEL, "messages": [
                     {"role": "user", "content": prompt}], "max_tokens": 120, "temperature": 0.1},
@@ -420,20 +421,23 @@ class TaskExecutor:
                             "reason": "missing_provenance",
                         }
             except (httpx.HTTPError, httpx.TransportError):
-                # Agent service unreachable — attempt Groq LLM scoring on sampled items,
-                # fall back to heuristic for the rest. Replaces the old hardcoded 0.82.
-                if (
-                    _GROQ_API_KEY
-                    and i < _GROQ_MAX_ITEMS
-                    and (i % _GROQ_SAMPLE_EVERY) == 0
-                ):
-                    g_quality, g_relevance, g_reason = await _groq_score_item(filter_items[i])
-                    if g_quality > 0:
-                        score = g_quality
-                        relevance_score = g_relevance
-                        decision_reason = f"groq:{g_reason}"
-                        item_provenance = {
-                            "live_inference": True, "model": _GROQ_MODEL, "provider": "groq"}
+                pass  # fall through to Groq/heuristic below
+
+            # Proactively call Groq on sampled items regardless of agent outcome.
+            # This ensures live LLM inference appears in bundles even when agents are unreachable.
+            groq_key = os.getenv("GROQ_API_KEY", "").strip()
+            if (
+                groq_key
+                and i < _GROQ_MAX_ITEMS
+                and (i % _GROQ_SAMPLE_EVERY) == 0
+            ):
+                g_quality, g_relevance, g_reason = await _groq_score_item(filter_items[i])
+                if g_quality > 0:
+                    score = g_quality
+                    relevance_score = g_relevance
+                    decision_reason = f"groq:{g_reason}"
+                    item_provenance = {
+                        "live_inference": True, "model": _GROQ_MODEL, "provider": "groq"}
 
             # Forced deterministic degradation/recovery for explicit test mode only.
             forced_mode = red_team and red_team_mode == "forced"
