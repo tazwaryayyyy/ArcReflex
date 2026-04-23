@@ -45,7 +45,7 @@ _GROQ_SAMPLE_EVERY = int(
 _GROQ_MAX_ITEMS = int(os.getenv("GROQ_MAX_ITEMS", "50"))
 
 
-async def _groq_score_item(item: dict, index: int) -> tuple[float, float, str]:
+async def _groq_score_item(item: dict) -> tuple[float, float, str]:
     """Call Groq to score a single search result. Returns (quality, relevance, reason)."""
     if not _GROQ_API_KEY:
         return 0.0, 0.0, "groq_disabled"
@@ -74,18 +74,18 @@ async def _groq_score_item(item: dict, index: int) -> tuple[float, float, str]:
                 r = float(parsed.get("relevance_score", 0.70))
                 reason = str(parsed.get("reason", "groq_scored"))[:120]
                 return min(max(q, 0.0), 1.0), min(max(r, 0.0), 1.0), reason
-    except Exception:
+    except (httpx.HTTPError, httpx.TimeoutException, KeyError, ValueError, json.JSONDecodeError):
         pass
     return 0.0, 0.0, "groq_error"
 
 
-def _heuristic_score(index: int, item: dict) -> tuple[float, float, str]:
+def _heuristic_score(item_index: int, item: dict) -> tuple[float, float, str]:
     """Position + content-length heuristic. Replaces the hardcoded 0.82 constant."""
     title = str(item.get("title", ""))
     snippet = str(item.get("snippet", ""))
     text_len = len(title) + len(snippet)
     relevance = min(0.95, 0.58 + min(text_len, 260) / 750.0)
-    quality = max(0.52, 0.91 - (index / 1100.0) +
+    quality = max(0.52, 0.91 - (item_index / 1100.0) +
                   (0.03 if text_len > 80 else -0.02))
     return round(relevance, 3), round(quality, 3), "heuristic:position+content_length"
 
@@ -95,6 +95,8 @@ def _payment_commitment(task_id: str, item_index: int, agent: str, decision: str
     raw = f"{task_id}:{item_index}:{agent}:{decision}:{quality:.4f}"
     return hashlib.sha256(raw.encode()).hexdigest()
 
+
+def _git_commit() -> str:
     try:
         out = subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"],
@@ -425,16 +427,13 @@ class TaskExecutor:
                     and i < _GROQ_MAX_ITEMS
                     and (i % _GROQ_SAMPLE_EVERY) == 0
                 ):
-                    try:
-                        g_quality, g_relevance, g_reason = await _groq_score_item(filter_items[i], i)
-                        if g_quality > 0:
-                            score = g_quality
-                            relevance_score = g_relevance
-                            decision_reason = f"groq:{g_reason}"
-                            item_provenance = {
-                                "live_inference": True, "model": _GROQ_MODEL, "provider": "groq"}
-                    except Exception:
-                        pass
+                    g_quality, g_relevance, g_reason = await _groq_score_item(filter_items[i])
+                    if g_quality > 0:
+                        score = g_quality
+                        relevance_score = g_relevance
+                        decision_reason = f"groq:{g_reason}"
+                        item_provenance = {
+                            "live_inference": True, "model": _GROQ_MODEL, "provider": "groq"}
 
             # Forced deterministic degradation/recovery for explicit test mode only.
             forced_mode = red_team and red_team_mode == "forced"
