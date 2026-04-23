@@ -741,16 +741,30 @@ async def groq_test():
     api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
         return {"groq_key_set": False, "error": "GROQ_API_KEY env var missing or empty"}
-    test_item = {"title": "Test Article", "snippet": "This is a sample search result for diagnostic purposes."}
-    q, r, reason = await _groq_score_item(test_item)
+    # Raw call that exposes the actual exception
+    raw_error = None
+    raw_status = None
+    raw_body = None
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={"model": _GROQ_MODEL, "messages": [{"role": "user", "content": "Say OK"}], "max_tokens": 5},
+            )
+            raw_status = resp.status_code
+            raw_body = resp.text[:400]
+            resp.raise_for_status()
+    except Exception as exc:
+        raw_error = f"{type(exc).__name__}: {exc}"
     return {
         "groq_key_set": True,
         "groq_key_prefix": api_key[:8] + "...",
         "model": _GROQ_MODEL,
-        "quality_score": q,
-        "relevance_score": r,
-        "reason": reason,
-        "live_call_succeeded": q > 0,
+        "http_status": raw_status,
+        "response_body": raw_body,
+        "error": raw_error,
+        "live_call_succeeded": raw_error is None and raw_status == 200,
     }
 
 
