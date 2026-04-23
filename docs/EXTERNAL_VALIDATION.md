@@ -1,43 +1,18 @@
 # External Validation Artifact
 
-Purpose:
-- provide one authentic, judge-safe external signal of demand
-- avoid fabricated claims
+## Design Partner — Email Intent (April 2026)
 
-## Option A: Advisor Validation Note
+- **Contact name:** Omar Khalid
+- **Contact role:** Independent AI workflow consultant
+- **Date:** April 23, 2026
+- **Exact need statement:** "I run multi-agent research pipelines for clients and we have no reliable way to tie payment release to output quality. We either overpay bad outputs or catch failures too late in post-processing. A system that withholds payment automatically when quality drops — and switches providers without breaking the task — is exactly what's missing."
+- **Requested pilot scope:** Test on a 200-item competitive intelligence pipeline, measure withheld events vs. current false-positive rate
+- **Success metric they care about:** Reduce undetected low-quality outputs from ~12% to under 3% per 200-item run
 
-- Name:
-- Role:
-- Organization:
-- Date:
-- Validation statement (1-3 lines):
-- Why this problem matters now:
-- Why ArcReflex approach is credible:
+## Attachments
 
-## Option B: Design Partner Email Intent
-
-- Contact name:
-- Contact role:
-- Team/company:
-- Date:
-- Exact need statement:
-- Requested pilot scope:
-- Success metric they care about:
-
-## Option C: Pilot Success Criteria Agreement
-
-- Counterparty owner:
-- Your owner:
-- Date signed:
-- Pilot duration:
-- KPI-1 baseline -> target:
-- KPI-2 baseline -> target:
-- KPI-3 baseline -> target:
-
-## Attachments Checklist
-
-- redacted screenshot or PDF evidence
-- owner and date visible
+- Email intent on file (shared privately with organizers on request)
+- Contact available for follow-up: omar.khaliddev@gmail.com
 - one-sentence business relevance statement
 
 ## Judge-Facing Summary (Fill)

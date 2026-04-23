@@ -8,6 +8,8 @@
 
 "Traditional pipelines detect bad quality late. Internal accounting logs payments, but does not provide independent, receipt-grade verification tied to quality gates."
 
+**Ablation point (say this if asked about novelty):** "Without ArcReflex, 100% of payments go through regardless of output quality — there is no mechanism to withhold, switch providers, or produce a verifiable receipt that a quality gate was enforced. ArcReflex makes quality enforcement an on-chain economic fact, not a log entry."
+
 ## 0:25-1:00 Live proof
 
 - Run: npm run judge:prove
