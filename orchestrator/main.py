@@ -419,7 +419,7 @@ class TaskExecutor:
                             "live_inference": False,
                             "reason": "missing_provenance",
                         }
-            except httpx.HTTPError:
+            except (httpx.HTTPError, httpx.TransportError):
                 # Agent service unreachable — attempt Groq LLM scoring on sampled items,
                 # fall back to heuristic for the rest. Replaces the old hardcoded 0.82.
                 if (
