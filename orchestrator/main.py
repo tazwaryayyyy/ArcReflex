@@ -735,6 +735,25 @@ async def health():
     }
 
 
+@app.get("/groq-test")
+async def groq_test():
+    """Diagnostic: verify GROQ_API_KEY is set and a live call succeeds."""
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not api_key:
+        return {"groq_key_set": False, "error": "GROQ_API_KEY env var missing or empty"}
+    test_item = {"title": "Test Article", "snippet": "This is a sample search result for diagnostic purposes."}
+    q, r, reason = await _groq_score_item(test_item)
+    return {
+        "groq_key_set": True,
+        "groq_key_prefix": api_key[:8] + "...",
+        "model": _GROQ_MODEL,
+        "quality_score": q,
+        "relevance_score": r,
+        "reason": reason,
+        "live_call_succeeded": q > 0,
+    }
+
+
 @app.get("/judge/status")
 async def judge_status():
     return {
