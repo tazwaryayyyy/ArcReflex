@@ -152,9 +152,15 @@ AGENTS = {
     },
 }
 
-# Snapshot of initial reputations — restored before each judge run so that
+# Hardcoded initial reputations — restored before each judge run so that
 # reputation penalties from run N do not bias the auction in run N+1.
-_INITIAL_REPUTATIONS: dict[str, int] = {k: v["reputation"] for k, v in AGENTS.items()}
+# These are fixed constants, NOT a snapshot, so redeployment state can't corrupt them.
+_INITIAL_REPUTATIONS: dict[str, int] = {
+    "search_a": 72,
+    "search_b": 65,
+    "filter_a": 81,
+    "filter_b": 58,
+}
 
 
 def run_auction(agent_type_prefix: str, exclude: str | None = None) -> str:
@@ -358,13 +364,13 @@ class TaskExecutor:
 
             # Forced deterministic degradation/recovery for explicit test mode only.
             forced_mode = red_team and red_team_mode == "forced"
-                if forced_mode and (not switched):
+            if forced_mode and (not switched):
                 degrade_window_start = max(0, red_team_degrade_at - 4)
                 if degrade_window_start <= i <= red_team_degrade_at:
                     score = min(score, QUALITY_THRESHOLD - 0.09)
                     decision_reason = "forced_red_team_degradation"
                 elif forced_mode and switched:
-                # Ensure a measurable recovery signal after replacement.
+                    # Ensure a measurable recovery signal after replacement.
                 score = max(score, QUALITY_THRESHOLD + 0.12)
                 decision_reason = "forced_recovery_boost"
 
