@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import os
 import subprocess
@@ -36,8 +37,64 @@ REPUTATION_PENALTY_ON_SWITCH = int(
     os.getenv("REPUTATION_PENALTY_ON_SWITCH", "15"))
 MIN_AGENT_REPUTATION = int(os.getenv("MIN_AGENT_REPUTATION", "10"))
 
+# --- Groq LLM quality scoring (inline, no agent service needed) ---
+_GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
+_GROQ_SAMPLE_EVERY = int(
+    os.getenv("GROQ_SAMPLE_EVERY", "4"))  # score 1 in 4 items
+_GROQ_MAX_ITEMS = int(os.getenv("GROQ_MAX_ITEMS", "50"))
 
-def _git_commit() -> str:
+
+async def _groq_score_item(item: dict, index: int) -> tuple[float, float, str]:
+    """Call Groq to score a single search result. Returns (quality, relevance, reason)."""
+    if not _GROQ_API_KEY:
+        return 0.0, 0.0, "groq_disabled"
+    title = str(item.get("title", ""))[:120]
+    snippet = str(item.get("snippet", ""))[:300]
+    prompt = (
+        "You are a search result quality evaluator. "
+        "Return ONLY valid JSON with keys: quality_score (float 0-1), relevance_score (float 0-1), reason (string). "
+        f"Evaluate this search result:\ntitle: {title}\nsnippet: {snippet}"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {_GROQ_API_KEY}",
+                         "Content-Type": "application/json"},
+                json={"model": _GROQ_MODEL, "messages": [
+                    {"role": "user", "content": prompt}], "max_tokens": 120, "temperature": 0.1},
+            )
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"].strip()
+            start, end = content.find("{"), content.rfind("}")
+            if start != -1 and end != -1:
+                parsed = json.loads(content[start:end + 1])
+                q = float(parsed.get("quality_score", 0.82))
+                r = float(parsed.get("relevance_score", 0.70))
+                reason = str(parsed.get("reason", "groq_scored"))[:120]
+                return min(max(q, 0.0), 1.0), min(max(r, 0.0), 1.0), reason
+    except Exception:
+        pass
+    return 0.0, 0.0, "groq_error"
+
+
+def _heuristic_score(index: int, item: dict) -> tuple[float, float, str]:
+    """Position + content-length heuristic. Replaces the hardcoded 0.82 constant."""
+    title = str(item.get("title", ""))
+    snippet = str(item.get("snippet", ""))
+    text_len = len(title) + len(snippet)
+    relevance = min(0.95, 0.58 + min(text_len, 260) / 750.0)
+    quality = max(0.52, 0.91 - (index / 1100.0) +
+                  (0.03 if text_len > 80 else -0.02))
+    return round(relevance, 3), round(quality, 3), "heuristic:position+content_length"
+
+
+def _payment_commitment(task_id: str, item_index: int, agent: str, decision: str, quality: float) -> str:
+    """Commit to a payment decision before execution — prevents post-hoc manipulation."""
+    raw = f"{task_id}:{item_index}:{agent}:{decision}:{quality:.4f}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
     try:
         out = subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"],
@@ -332,11 +389,14 @@ class TaskExecutor:
 
         for i in range(200):
             info = AGENTS[current_filter]
-            score = 0.82
-            relevance_score = 0.70
-            decision_reason = "fallback_default"
-            item_provenance = {"live_inference": False,
-                               "reason": "fallback_default"}
+            # Default: use content-aware heuristic (not a hardcoded constant)
+            h_relevance, h_quality, h_reason = _heuristic_score(
+                i, filter_items[i])
+            score = h_quality
+            relevance_score = h_relevance
+            decision_reason = h_reason
+            item_provenance: dict = {
+                "live_inference": False, "reason": "heuristic"}
             try:
                 async with httpx.AsyncClient(timeout=6.0) as client:
                     f_resp = await client.post(
@@ -348,19 +408,33 @@ class TaskExecutor:
                     filtered = filter_payload.get("filtered", [])
                     if filtered:
                         row = filtered[0]
-                        score = float(row.get("quality_score", 0.82))
+                        score = float(row.get("quality_score", h_quality))
                         relevance_score = float(
-                            row.get("relevance_score", 0.70))
+                            row.get("relevance_score", h_relevance))
                         decision_reason = str(
-                            row.get("reason", "model_or_heuristic_score"))
+                            row.get("reason", "agent_scored"))
                         item_provenance = row.get("provenance", filter_payload.get("meta", {})) or {
                             "live_inference": False,
                             "reason": "missing_provenance",
                         }
             except httpx.HTTPError:
-                score = 0.6 if (
-                    not switched and current_filter == "filter_a") else 0.82
-                decision_reason = "filter_http_error_fallback"
+                # Agent service unreachable — attempt Groq LLM scoring on sampled items,
+                # fall back to heuristic for the rest. Replaces the old hardcoded 0.82.
+                if (
+                    _GROQ_API_KEY
+                    and i < _GROQ_MAX_ITEMS
+                    and (i % _GROQ_SAMPLE_EVERY) == 0
+                ):
+                    try:
+                        g_quality, g_relevance, g_reason = await _groq_score_item(filter_items[i], i)
+                        if g_quality > 0:
+                            score = g_quality
+                            relevance_score = g_relevance
+                            decision_reason = f"groq:{g_reason}"
+                            item_provenance = {
+                                "live_inference": True, "model": _GROQ_MODEL, "provider": "groq"}
+                    except Exception:
+                        pass
 
             # Forced deterministic degradation/recovery for explicit test mode only.
             forced_mode = red_team and red_team_mode == "forced"
@@ -401,14 +475,18 @@ class TaskExecutor:
                 "relevance_score": round(relevance_score, 3),
                 "reason": decision_reason,
                 "provenance": item_provenance,
+                "commitment": _payment_commitment(task_id, i, current_filter, "release", round(score, 3)),
             })
 
             if should_switch and not switched:
+                # Commit to the withhold decision BEFORE executing it — prevents post-hoc manipulation.
+                withhold_commitment = _payment_commitment(
+                    task_id, i, current_filter, "withhold", round(score, 3))
                 await self.payment.withhold_payment(
                     from_label="Orchestrator",
                     to_label=current_filter,
                     amount_usdc=info["price_per_item"],
-                    reason=f"Quality {score:.2f} < threshold {QUALITY_THRESHOLD:.2f}",
+                    reason=f"Quality {score:.2f} < threshold {QUALITY_THRESHOLD:.2f} | commit:{withhold_commitment[:16]}",
                     task_id=task_id,
                     item_index=i,
                 )
@@ -420,6 +498,7 @@ class TaskExecutor:
                     "rolling_avg": round(rolling_avg, 3),
                     "threshold": QUALITY_THRESHOLD,
                     "reason": f"Score={score:.2f}, rolling_avg={rolling_avg:.2f}, threshold={QUALITY_THRESHOLD:.2f}",
+                    "commitment": withhold_commitment,
                     "timestamp": time.time(),
                 })
 
