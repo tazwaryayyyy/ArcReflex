@@ -65,7 +65,7 @@ def run_once(
             data = resp.json()
             data["wall_clock_ms"] = elapsed_ms
             return data
-        except (httpx.ReadTimeout, httpx.ConnectError) as exc:
+        except (httpx.ReadTimeout, httpx.ConnectError, httpx.ReadError) as exc:
             last_exc = exc
             time.sleep(5)
         except httpx.HTTPStatusError as exc:
@@ -155,7 +155,7 @@ def main() -> int:
                         timeout_seconds=args.timeout_seconds,
                         retries=args.retries,
                     )
-                except (httpx.ReadTimeout, httpx.ConnectError) as exc:
+                except (httpx.ReadTimeout, httpx.ConnectError, httpx.ReadError) as exc:
                     print(
                         f"WARN: run {i + 1} attempt {attempt + 1} transport error: {exc}; retrying..."
                     )
