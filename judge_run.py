@@ -67,6 +67,14 @@ def run_once(
             return data
         except (httpx.ReadTimeout, httpx.ConnectError) as exc:
             last_exc = exc
+            time.sleep(5)
+        except httpx.HTTPStatusError as exc:
+            # Retry on 502/503 (Render mid-redeploy) but not on other 4xx/5xx
+            if exc.response.status_code in (502, 503):
+                last_exc = exc
+                time.sleep(15)
+            else:
+                raise
 
     assert last_exc is not None
     raise last_exc
