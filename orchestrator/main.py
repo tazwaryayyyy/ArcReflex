@@ -369,8 +369,8 @@ class TaskExecutor:
                 if degrade_window_start <= i <= red_team_degrade_at:
                     score = min(score, QUALITY_THRESHOLD - 0.09)
                     decision_reason = "forced_red_team_degradation"
-                elif forced_mode and switched:
-                    # Ensure a measurable recovery signal after replacement.
+            elif forced_mode and switched:
+                # Ensure a measurable recovery signal after replacement.
                 score = max(score, QUALITY_THRESHOLD + 0.12)
                 decision_reason = "forced_recovery_boost"
 
