@@ -1,0 +1,30 @@
+{
+  "timestamp": 1776958395,
+  "base_url": "https://arcreflex-orchestrator-7ryd.onrender.com",
+  "runs": 3,
+  "failed_runs": 0,
+  "hard_numbers": {
+    "total_latency_ms": {
+      "median": 131296.0,
+      "p95": 137189.0
+    },
+    "wall_clock_ms": {
+      "median": 131611.0,
+      "p95": 137565.0
+    },
+    "total_transactions": {
+      "median": 226.0,
+      "p95": 226.0
+    },
+    "withheld_payments": {
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "total_usdc_settled": {
+      "median": 0.02668,
+      "p95": 0.02668
+    }
+  },
+  "pass": true,
+  "summary_sha256": "2e2b0ecf5cbb17eee17ea1caa64d79c07950e1ae8ba52c69388af6beef6f5571"
+}
