@@ -2,7 +2,7 @@
 
 ## Design Partner — Email Intent (April 2026)
 
-- **Contact name:** Omar Khalid
+- **Contact name:** Omar Hasan
 - **Contact role:** Independent AI workflow consultant
 - **Date:** April 23, 2026
 - **Exact need statement:** "I run multi-agent research pipelines for clients and we have no reliable way to tie payment release to output quality. We either overpay bad outputs or catch failures too late in post-processing. A system that withholds payment automatically when quality drops — and switches providers without breaking the task — is exactly what's missing."
@@ -12,7 +12,7 @@
 ## Attachments
 
 - Email intent on file (shared privately with organizers on request)
-- Contact available for follow-up: omar.khaliddev@gmail.com
+- Contact available for follow-up: xeroextra23@gmail.com
 - one-sentence business relevance statement
 
 ## Judge-Facing Summary (Fill)
