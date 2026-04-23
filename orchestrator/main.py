@@ -152,6 +152,10 @@ AGENTS = {
     },
 }
 
+# Snapshot of initial reputations — restored before each judge run so that
+# reputation penalties from run N do not bias the auction in run N+1.
+_INITIAL_REPUTATIONS: dict[str, int] = {k: v["reputation"] for k, v in AGENTS.items()}
+
 
 def run_auction(agent_type_prefix: str, exclude: str | None = None) -> str:
     candidates = {
@@ -284,7 +288,8 @@ class TaskExecutor:
                 }
                 for i in range(25)
             ]
-            search_provenance = {"source": "synthetic_fallback", "agent": search_winner}
+            search_provenance = {
+                "source": "synthetic_fallback", "agent": search_winner}
         stage_ts["search_end"] = time.time()
 
         for i, _ in enumerate(results):
@@ -353,12 +358,12 @@ class TaskExecutor:
 
             # Forced deterministic degradation/recovery for explicit test mode only.
             forced_mode = red_team and red_team_mode == "forced"
-            if forced_mode and (not switched) and current_filter == "filter_a":
+                if forced_mode and (not switched):
                 degrade_window_start = max(0, red_team_degrade_at - 4)
                 if degrade_window_start <= i <= red_team_degrade_at:
                     score = min(score, QUALITY_THRESHOLD - 0.09)
                     decision_reason = "forced_red_team_degradation"
-            elif forced_mode and switched and current_filter == "filter_b":
+                elif forced_mode and switched:
                 # Ensure a measurable recovery signal after replacement.
                 score = max(score, QUALITY_THRESHOLD + 0.12)
                 decision_reason = "forced_recovery_boost"
@@ -667,6 +672,8 @@ async def judge_run_sync(body: dict):
         return JSONResponse({"error": "task text is required"}, status_code=400)
 
     payment_client.reset()
+    for agent_id, rep in _INITIAL_REPUTATIONS.items():
+        AGENTS[agent_id]["reputation"] = rep
     task_id = f"judge_{int(time.time())}_{uuid.uuid4().hex[:6]}"
     judge_state.current_task_state = "running"
     judge_state.current_task_id = task_id
