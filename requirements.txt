@@ -16,9 +16,11 @@ asyncio==3.4.3
 pydantic==2.9.2
 python-dotenv==1.0.1
 
-# ── Vyper (for local contract compilation) ────────────────────────────────────
-vyper==0.3.10
-titanoboa==0.2.3       # Local Arc fork for testing
+# ── Vyper (optional — only needed for local contract compilation) ─────────────
+# These conflict with web3/eth-account; install separately if needed:
+#   pip install vyper==0.3.10 titanoboa==0.2.3
+# vyper==0.3.10
+# titanoboa==0.2.3
 
 # ── Deployment ────────────────────────────────────────────────────────────────
 gunicorn==23.0.0
