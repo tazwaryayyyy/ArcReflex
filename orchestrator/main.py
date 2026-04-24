@@ -22,7 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ORCHESTRATOR_WALLET = os.getenv("ORCHESTRATOR_WALLET", "0xORCHESTRATOR")
+ORCHESTRATOR_WALLET = os.getenv(
+    "ORCHESTRATOR_WALLET", "0x000000000000000000000000000000000000000A")
 
 
 @app.get("/")
@@ -43,6 +44,7 @@ _GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 _GROQ_SAMPLE_EVERY = int(
     os.getenv("GROQ_SAMPLE_EVERY", "4"))  # score 1 in 4 items
 _GROQ_MAX_ITEMS = int(os.getenv("GROQ_MAX_ITEMS", "50"))
+_GROQ_TIMEOUT_SECONDS = float(os.getenv("GROQ_TIMEOUT_SECONDS", "3"))
 
 
 async def _groq_score_item(item: dict) -> tuple[float, float, str]:
@@ -58,7 +60,7 @@ async def _groq_score_item(item: dict) -> tuple[float, float, str]:
         f"Evaluate this search result:\ntitle: {title}\nsnippet: {snippet}"
     )
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=_GROQ_TIMEOUT_SECONDS) as client:
             resp = await client.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}",
@@ -180,7 +182,7 @@ def _agent_url(env_name: str, default_url: str) -> str:
 AGENTS = {
     "search_a": {
         "url": _agent_url("SEARCH_A_URL", "http://search_a:8001"),
-        "wallet": os.getenv("SEARCH_A_WALLET", "0xSEARCH_A"),
+        "wallet": os.getenv("SEARCH_A_WALLET", "0x0000000000000000000000000000000000001001"),
         "price_per_item": 0.0002,
         "price_micros": 200,
         "reputation": 72,
@@ -188,7 +190,7 @@ AGENTS = {
     },
     "search_b": {
         "url": _agent_url("SEARCH_B_URL", "http://search_b:8002"),
-        "wallet": os.getenv("SEARCH_B_WALLET", "0xSEARCH_B"),
+        "wallet": os.getenv("SEARCH_B_WALLET", "0x0000000000000000000000000000000000001002"),
         "price_per_item": 0.00022,
         "price_micros": 220,
         "reputation": 65,
@@ -196,7 +198,7 @@ AGENTS = {
     },
     "filter_a": {
         "url": _agent_url("FILTER_A_URL", "http://filter_a:8003"),
-        "wallet": os.getenv("FILTER_A_WALLET", "0xFILTER_A"),
+        "wallet": os.getenv("FILTER_A_WALLET", "0x0000000000000000000000000000000000001003"),
         "price_per_item": 0.0001,
         "price_micros": 100,
         "reputation": 81,
@@ -204,7 +206,7 @@ AGENTS = {
     },
     "filter_b": {
         "url": _agent_url("FILTER_B_URL", "http://filter_b:8004"),
-        "wallet": os.getenv("FILTER_B_WALLET", "0xFILTER_B"),
+        "wallet": os.getenv("FILTER_B_WALLET", "0x0000000000000000000000000000000000001004"),
         "price_per_item": 0.00012,
         "price_micros": 120,
         "reputation": 58,
@@ -325,6 +327,8 @@ class TaskExecutor:
         filter_quality_after: list[float] = []
         inference_trace: list[dict] = []
         search_provenance: dict = {}
+        unavailable_filter_agents: set[str] = set()
+        groq_runtime_disabled = False
 
         stage_ts["search_start"] = time.time()
         search_winner = run_auction("search")
@@ -400,36 +404,43 @@ class TaskExecutor:
             decision_reason = h_reason
             item_provenance: dict = {
                 "live_inference": False, "reason": "heuristic"}
-            try:
-                async with httpx.AsyncClient(timeout=6.0) as client:
-                    f_resp = await client.post(
-                        f"{info['url']}/filter",
-                        json={"items": [filter_items[i]], "start_index": i},
-                    )
-                    f_resp.raise_for_status()
-                    filter_payload = f_resp.json()
-                    filtered = filter_payload.get("filtered", [])
-                    if filtered:
-                        row = filtered[0]
-                        score = float(row.get("quality_score", h_quality))
-                        relevance_score = float(
-                            row.get("relevance_score", h_relevance))
-                        decision_reason = str(
-                            row.get("reason", "agent_scored"))
-                        item_provenance = row.get("provenance", filter_payload.get("meta", {})) or {
-                            "live_inference": False,
-                            "reason": "missing_provenance",
-                        }
-            except (httpx.HTTPError, httpx.TransportError):
-                pass  # fall through to Groq/heuristic below
+            if current_filter not in unavailable_filter_agents:
+                try:
+                    async with httpx.AsyncClient(timeout=6.0) as client:
+                        f_resp = await client.post(
+                            f"{info['url']}/filter",
+                            json={"items": [filter_items[i]],
+                                  "start_index": i},
+                        )
+                        f_resp.raise_for_status()
+                        filter_payload = f_resp.json()
+                        filtered = filter_payload.get("filtered", [])
+                        if filtered:
+                            row = filtered[0]
+                            score = float(row.get("quality_score", h_quality))
+                            relevance_score = float(
+                                row.get("relevance_score", h_relevance))
+                            decision_reason = str(
+                                row.get("reason", "agent_scored"))
+                            item_provenance = row.get("provenance", filter_payload.get("meta", {})) or {
+                                "live_inference": False,
+                                "reason": "missing_provenance",
+                            }
+                except (httpx.HTTPError, httpx.TransportError):
+                    # If one call fails, skip further remote calls for this agent
+                    # in the current run to avoid repeated timeout penalties.
+                    unavailable_filter_agents.add(current_filter)
+                    pass  # fall through to Groq/heuristic below
 
             # Proactively call Groq on sampled items regardless of agent outcome.
             # This ensures live LLM inference appears in bundles even when agents are unreachable.
             groq_key = os.getenv("GROQ_API_KEY", "").strip()
             if (
-                groq_key
-                and i < _GROQ_MAX_ITEMS
-                and (i % _GROQ_SAMPLE_EVERY) == 0
+                red_team_mode != "forced" and
+                groq_key and
+                (not groq_runtime_disabled) and
+                i < _GROQ_MAX_ITEMS and
+                (i % _GROQ_SAMPLE_EVERY) == 0
             ):
                 g_quality, g_relevance, g_reason = await _groq_score_item(filter_items[i])
                 if g_quality > 0:
@@ -438,6 +449,9 @@ class TaskExecutor:
                     decision_reason = f"groq:{g_reason}"
                     item_provenance = {
                         "live_inference": True, "model": _GROQ_MODEL, "provider": "groq"}
+                elif g_reason == "groq_error":
+                    # Avoid repeating slow failing calls for the rest of this run.
+                    groq_runtime_disabled = True
 
             # Forced deterministic degradation/recovery for explicit test mode only.
             forced_mode = red_team and red_team_mode == "forced"
@@ -810,13 +824,13 @@ async def judge_run_sync(body: dict):
             red_team_degrade_at=red_team_degrade_at,
             red_team_mode=red_team_mode,
         )
-    except (RuntimeError, httpx.HTTPError, ValueError, TypeError, KeyError, OSError) as exc:
+    except Exception as exc:
         judge_state.current_task_state = "failed"
         return JSONResponse(
             {
                 "task_id": task_id,
                 "status": "failed",
-                "error": str(exc),
+                "error": f"{type(exc).__name__}: {exc}",
             },
             status_code=500,
         )

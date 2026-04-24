@@ -14,9 +14,12 @@ import hashlib
 import json
 import math
 import os
+import shutil
 import statistics
+import subprocess
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 
@@ -35,6 +38,81 @@ def p95(values: list[float]) -> float:
     idx = math.ceil(0.95 * len(values_sorted)) - 1
     idx = max(0, min(idx, len(values_sorted) - 1))
     return values_sorted[idx]
+
+
+def _is_localhost_base_url(base_url: str) -> bool:
+    parsed = urlparse(base_url)
+    host = (parsed.hostname or "").lower()
+    return host in {"localhost", "127.0.0.1", "::1"}
+
+
+def _healthcheck_ok(client: httpx.Client, base_url: str, timeout_seconds: float = 3.0) -> bool:
+    try:
+        resp = client.get(f"{base_url}/health", timeout=timeout_seconds)
+        return resp.status_code == 200
+    except (httpx.HTTPError, ValueError):
+        return False
+
+
+def _compose_command() -> list[str] | None:
+    docker = shutil.which("docker")
+    if not docker:
+        return None
+    # Prefer Docker Compose v2 plugin (`docker compose`).
+    return [docker, "compose"]
+
+
+def ensure_local_orchestrator(
+    client: httpx.Client,
+    base_url: str,
+    auto_start_local: bool,
+    startup_timeout_seconds: float,
+) -> None:
+    if _healthcheck_ok(client, base_url):
+        return
+
+    if not _is_localhost_base_url(base_url):
+        raise RuntimeError(
+            f"orchestrator unavailable at {base_url}; ensure deployment is up and reachable"
+        )
+
+    if not auto_start_local:
+        raise RuntimeError(
+            "orchestrator not reachable on localhost. "
+            "Start services first (for example: docker compose up -d orchestrator search_a search_b filter_a filter_b)."
+        )
+
+    compose_cmd = _compose_command()
+    if not compose_cmd:
+        raise RuntimeError(
+            "docker is not installed or not on PATH, and orchestrator is not reachable on localhost"
+        )
+
+    cmd = compose_cmd + [
+        "up",
+        "-d",
+        "orchestrator",
+        "search_a",
+        "search_b",
+        "filter_a",
+        "filter_b",
+    ]
+    try:
+        subprocess.run(cmd, check=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError(
+            f"failed to start docker compose services: {exc}") from exc
+
+    deadline = time.time() + max(1.0, startup_timeout_seconds)
+    while time.time() < deadline:
+        if _healthcheck_ok(client, base_url):
+            return
+        time.sleep(2)
+
+    raise RuntimeError(
+        "orchestrator did not become healthy in time. "
+        "Check docker compose logs for orchestrator/search/filter services."
+    )
 
 
 def run_once(
@@ -128,6 +206,19 @@ def main() -> int:
         action="store_true",
         help="Print only the summary hash line for CI/judge scripts",
     )
+    parser.add_argument(
+        "--auto-start-local",
+        action=argparse.BooleanOptionalAction,
+        default=os.getenv("JUDGE_AUTO_START_LOCAL", "true").lower() in {
+            "1", "true", "yes", "on"},
+        help="Auto-start local docker compose services when --base-url points to localhost and orchestrator is down",
+    )
+    parser.add_argument(
+        "--startup-timeout-seconds",
+        type=float,
+        default=float(os.getenv("JUDGE_STARTUP_TIMEOUT_SECONDS", "120")),
+        help="Max time to wait for local orchestrator health after auto-start",
+    )
     args = parser.parse_args()
 
     out_dir = Path(args.output)
@@ -142,6 +233,12 @@ def main() -> int:
     failures = 0
 
     with httpx.Client() as client:
+        ensure_local_orchestrator(
+            client=client,
+            base_url=args.base_url,
+            auto_start_local=bool(args.auto_start_local),
+            startup_timeout_seconds=args.startup_timeout_seconds,
+        )
         for i in range(args.runs):
             run_data = None
             for attempt in range(max(1, args.retry_failed_runs + 1)):

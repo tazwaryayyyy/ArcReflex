@@ -47,6 +47,446 @@
       "total_usdc": null,
       "switch_tx_hash": null,
       "sample_tx_hashes": []
+    },
+    {
+      "run": 4,
+      "timestamp": 1777025506,
+      "task": "ArcReflex deterministic judge scenario #1",
+      "task_id": "judge_1777024992_1c029b",
+      "total_tx": 187,
+      "released": 187,
+      "withheld": 0,
+      "total_usdc": 0.02284,
+      "sample_tx_hashes": [
+        "0x7972aa7948d7bad12824f867f5b4d51a0039eccf1406d91d7ae350de291e3d40",
+        "0x70a134c3080e3d3fc993e1202fe26690c39d86e626d12d678a63bb5e199a7efd",
+        "0x18a0ddda71a69f4096e3870852f03e5b5008617f836a30a3efafb9ed8a29b18c",
+        "0xa4d729f8a09642ebd043817fe3c51b9b23a2b71cfbe7e706b2e304fbc6e929dc",
+        "0xe6198f971716c1297f8c4ee7590ef07269ea38116e1bfed5e5b336c89cc59db0",
+        "0xea0c12d50463d297cd90868c159de52912506b6c052c68bc7c41dd122c09a979",
+        "0x5d8235d4771fa24119e098a488144f7621f9a82247a5b8dbbaf79093ed9beb59",
+        "0xbdc73a5950c11f109b47e4a0ea745744c31a6996c9fbb06652327d0f8c4cf8e3"
+      ]
+    },
+    {
+      "run": 5,
+      "timestamp": 1777025811,
+      "task": "ArcReflex deterministic judge scenario #1",
+      "task_id": "judge_1777025299_b76093",
+      "total_tx": 185,
+      "released": 185,
+      "withheld": 0,
+      "total_usdc": 0.02262,
+      "sample_tx_hashes": [
+        "0x5031d09fc6cd60c017e765583faa3755e33d498d1e1e73360a83b55378383b90",
+        "0x5872973261b01513e89d71d6e7fef1ac43c4d94d472cf34ac8be0be10f4451ae",
+        "0xbed885ed230da4ae69cf1ffc6ce6754b2e0e5c40623f4ff27ca369e9319b1b59",
+        "0xe93711014e0c745c7f52ecfa7f2b32ec19bb238b6f3ac05dfbb42b6d01e9feeb",
+        "0xed0266b306de96da5728be36f4099cdb28d19628c75e07fdd7c0971f4a35c5a6",
+        "0x0c80aaef3d14f67bda1928a5d472a2b749627017580ce993199bbc23ee1335b6",
+        "0x4ac4543f7f3b4faea8aa6cbed5d1980a3d58eff38f1d64630cf5d836e6594c2c",
+        "0x99d0776d2932360157ab22a926dc0cf05156e5cf0930be4877d5e8bfa06d3491"
+      ]
+    },
+    {
+      "run": 6,
+      "timestamp": 1777026118,
+      "task": "ArcReflex deterministic judge scenario #1",
+      "task_id": "judge_1777025607_91c0ee",
+      "total_tx": 185,
+      "released": 185,
+      "withheld": 0,
+      "total_usdc": 0.02262,
+      "sample_tx_hashes": [
+        "0x9a6843c756719fac943283c1765d25a7b46bf5315ef7e1c4d4523428e392d24d",
+        "0xd1699ecd0ca10130c132ff048c2b85670489cf0c553c11acc20b3c0f7516faae",
+        "0xec470fde47b20db85f328d531753366f1f2e970f9fd9a65ab864b08a5d144312",
+        "0x92230fdbd883c3bce6cb79a44ada3c0cc5817df9d2111f9416bebb4e319f2b85",
+        "0x7c4b11a40343e8392ece4625ace382e6a7bcb8ad27869fab886f854116a9d470",
+        "0x38b92458ceec955a4f97703f817670582822a83077e20a608ec3cb5193c8b3be",
+        "0x373c66aafdc49dcee574f965f5051b73c07fa319235d913eff3992684a7788aa",
+        "0x291aa3a2c0a2ffe790c1dfb5f2e14797c133d802bceddcb4e0f90d33c0ac2511"
+      ]
+    },
+    {
+      "run": 7,
+      "timestamp": 1777026425,
+      "task": "ArcReflex deterministic judge scenario #1",
+      "task_id": "judge_1777025914_707a3d",
+      "total_tx": 185,
+      "released": 185,
+      "withheld": 0,
+      "total_usdc": 0.02262,
+      "sample_tx_hashes": [
+        "0x24ec00e838fcac9f49613948c65103bb9f53430519c9698cffec2d3bdb2b78c9",
+        "0x9fc82f3b996cda5c7baec4c7bde68fda49f2d490fa6410d6b36df9bb51d23a89",
+        "0x15d8a3e22ef79affce78cb909cd5a9d8ad2686e7eefc371b61f46dba22a8fc02",
+        "0xdc3e6d434c44ae7ec4bb018eb4386b3cf18cefc6fe0d8b59b1d6a191ecec045f",
+        "0xae0e1bf17db0699cb82204359aa0a89ebecb1a7fa906292fffba8189921ba336",
+        "0x88f13d80c830b7175b73901c99dd1ff08c5ce904c4691664c3ec0110a14f711a",
+        "0xbcdea4e517888e625696c6e2bacd89746c89d22300c21b46764843556f7f465e",
+        "0x92c6071af4b8624a45c5c6dd5fb73de6b87e8a0a180dc7c0efaf38c521a1461d"
+      ]
+    },
+    {
+      "run": 8,
+      "timestamp": 1777026732,
+      "task": "ArcReflex deterministic judge scenario #2",
+      "task_id": "judge_1777026221_800773",
+      "total_tx": 185,
+      "released": 185,
+      "withheld": 0,
+      "total_usdc": 0.02262,
+      "sample_tx_hashes": [
+        "0x848d1af1c6ec2be923a114f4cf01aaa285558050b4706abb658761b1a9e616d5",
+        "0x90d398292ecc41201da715b824741b3f3d95fb9025900427d82bba5d82ba8448",
+        "0x8f459dc104ed80ce822027b7231e18f30fc4b544a62d15030615a0d1c6f2140b",
+        "0x609797bae582073ce64b9a88f36e355a51a5c34708054b9dde4e07e16d50c051",
+        "0xfa14da7de6c6335199978154773f1b0a957bc7d1d8282262a384e804a96896ec",
+        "0x4662a7d68253c1072147ac3af65d1b2767ce2d072173bf8e94db093a865fe04e",
+        "0x446e50e9750af25a38c908b82bd68662604098de671d4b423a2cea0e033fb56d",
+        "0x47fe97c996bd6dcc9fe8944c08d8cbed574b5331e20068a6deeb57ccf4e129aa"
+      ]
+    },
+    {
+      "run": 9,
+      "timestamp": 1777027040,
+      "task": "ArcReflex deterministic judge scenario #2",
+      "task_id": "judge_1777026528_a2a5ea",
+      "total_tx": 185,
+      "released": 185,
+      "withheld": 0,
+      "total_usdc": 0.02262,
+      "sample_tx_hashes": [
+        "0xd479e94a6e8591cce0085eca537eed338b82c6800bb4330559cf63c30d342894",
+        "0x95eebc36f66724121e494036ddd9f13b330b643f2735e4ede59acbb4ad2bbd9b",
+        "0x96a6da3151d23b01e0b69ace31b05fd4ed775eda5ce71bef3296f0a68617eaba",
+        "0xea234de890b79365933f844285a4ad7b30560481f90bc08d6e5164bb25bb0baa",
+        "0xeebb38d47efbd83451a0ab35710aa50f1d775bd8b7803f12be578dad4760305c",
+        "0xb74f7eafca3664cecde0b7563a9b4d4035027b46484a313561080229e5ab43d1",
+        "0xd8a1cf8872caf783aee1907a6277666ddb8b240a81d56eb9f9a8ee1a5ae273a0",
+        "0xeeb832bd111ab7c83e511b16cf65693d7384d83efdc7ed5a46cbca2a1c197f61"
+      ]
+    },
+    {
+      "run": 10,
+      "timestamp": 1777027352,
+      "task": "ArcReflex deterministic judge scenario #2",
+      "task_id": "judge_1777026835_b2a2cd",
+      "total_tx": 43,
+      "released": 43,
+      "withheld": 0,
+      "total_usdc": 0.00694,
+      "sample_tx_hashes": [
+        "0x97510100130f1f7a75eccc78e1329239418782ffddcc5e51d290bea0aea67eb1",
+        "0x69052c2d271b7868885d6a1af96e922ffd40f333f4803db4a85556c122adfb16",
+        "0x108af5cf2495a0107c562fbe1081bb0f17cfeecd3d49a59cb7fdfa85ffe2751d",
+        "0x72a3f2cf8d88c50506878a72c7732e1d413d62ca5ad38f4ccf4ed93efd04bf3d",
+        "0x8234a7a59a4fc9fcd45a4ed36c93de332630b384d345ab4eb0a0ef409a30944e",
+        "0x43c0373042e02ab7ed87cff09e5f0e08435b58bccabf05cbf36c858faff9c49d",
+        "0x1da9c00735093d49bde01817a21dfd5c4c3cb53e5014a61667d86fe617cd6dd7",
+        "0x5d3e86e38a25d495ad915fee95485cb38b3491d642159b64be186e1c803bf39c"
+      ]
+    },
+    {
+      "run": 11,
+      "timestamp": 1777027665,
+      "task": "ArcReflex deterministic judge scenario #2",
+      "task_id": "judge_1777027142_f3c12e",
+      "total_tx": 272,
+      "released": 271,
+      "withheld": 1,
+      "total_usdc": 0.03142,
+      "sample_tx_hashes": [
+        "0xa2587bc9269848dddb975b938365009335b3bdfe9c140bc6c6ff40f24c70f37e",
+        "0x5eb833d4a60e8793000cf3aede23363dc8df4c08bf220f6095830c4caaf88ab8",
+        "0x734b05031f9c72827dd62fa664624170760a79975f7004ac1521e36c26b47240",
+        "0xe3d6470edb5ba274fabca409f0092c795758b715ebbcaa387fee9fc1ade71456",
+        "0x6ea071e1f65caad18967ebe1e04e36a65e34f03d0e9ead9211f7139c5a5cee8d",
+        "0x1927d8cee6375d746bf9a2371207e6eb73a421236f2dc56f153933177e6df1c3",
+        "0x5945e69976cf5cfdc05c93a7c7c7e511da3e8989be99cd015e29c74725fc2f6b",
+        "0x6fb153e6c4c697b4d364f910e4b890e515f8356c8e35773afaa5898db3a75783"
+      ]
+    },
+    {
+      "run": 12,
+      "timestamp": 1777027711,
+      "task": "ArcReflex deterministic judge scenario #3",
+      "task_id": "judge_1777027701_38f22e",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x14107a022bb5dc25f6c30a57c10cc9ede48a67e0068eb17be0fbc21e33b22dd5",
+        "0xc9c177fbdfdf9fef8ab89a1ed26bae5e38d8fc139aed1d0835fcd5e9a0dcca80",
+        "0xbf54f1d96c2f70e37316ecd75064196dbe6a348a36f528ae420db432821380fd",
+        "0x727ebfc9b58cc8e886bf9286f540f73f9f908db016135aea8f8bd03b6005315d",
+        "0x1e8af87e3ff5d56dca0d075d9231212028c40bef8a8e9e30c4f725401578320d",
+        "0x6c0fcbd7bd830b91fb40a825e2217e158ae8a337f7fd51ddb7970609dc6a26b1",
+        "0x4c531448131d736c7ecbbb1b9cdb394c2834eeb0c6682dc07d3d4534f2636acf",
+        "0xdabaf3680cdd14753e26d01c96dfc761a41b4f977ba888d40317af413d37cf16"
+      ]
+    },
+    {
+      "run": 13,
+      "timestamp": 1777027716,
+      "task": "speed check",
+      "task_id": "judge_1777027707_fe951d",
+      "total_tx": 427,
+      "released": 425,
+      "withheld": 2,
+      "total_usdc": 0.04836,
+      "sample_tx_hashes": [
+        "0x558eaf8a4fb72917cd00f9d1aaf839aa96c51c55752cc5beb9ebf267de479792",
+        "0x1f165808919fb813daf052837b9985d3b280e6954eac4d3a55e0e354767d0cda",
+        "0x9d3f54b1401ead421a3014ba35f9302d108a2f19a2628d9d736ccbd6501778a9",
+        "0x2c2f991f91b062ac1d8e359ba2a50facd28a4a6e7c1ae555e18286f61bd41a00",
+        "0x0a64c31fce3f421d2f965d04e292be3b5172ef0a1b03373f448695947fd701aa",
+        "0xef9b30bf6cbf20f7138dca6a491704ab262e77dca112bf36894ef877e3af1bfa",
+        "0xe51a63250861e1340a849f326c53265b4e67738e9311cb162505218f785e704d",
+        "0x29895b5a14080608137fdd4ea5a3c7552868dc8a34f2e7ada9876a0f455953ed"
+      ]
+    },
+    {
+      "run": 14,
+      "timestamp": 1777027748,
+      "task": "ArcReflex deterministic judge scenario #1",
+      "task_id": "judge_1777027739_f5037e",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x24451d9f8cd4fddfe9b7f3efabfd9781156778a1c826d75c320f943c923ac5ed",
+        "0x63838d097c4978c3fff70081a76bd1b1f5e15b9607cf91d2bb911a09c1e76d33",
+        "0xe649d6da1ca6c3d58af1761ebfec5f5211656073ebfde057bdcb417d7bcf66f3",
+        "0xd4514fd15ca2f5febe9e81da9d28c84144ca7892dbb00ffd9213df5b3289863e",
+        "0xd93f94c04b4200b5756f2911dd794686aca107e62a16cfe5701d42855ac59cf1",
+        "0x1d90abe84432cc66d26447befe6f96746f1208ad2e1350dea60777a2d6d120ae",
+        "0x72c6eb88915f39107aa09705990910bac4ba51d703e52468c7c5c77df1c17d04",
+        "0xae73f2da0e3601e48cb391f59dc9f3ae75a93b9b0b1dc704fab4b3980696e8de"
+      ]
+    },
+    {
+      "run": 15,
+      "timestamp": 1777027758,
+      "task": "ArcReflex deterministic judge scenario #2",
+      "task_id": "judge_1777027748_52c250",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0xdf5dbafe59361875ec87a1166cff2dc31c9f423b2b91ef872676ccdb159ba8e7",
+        "0x972f52412d36584cba42f51d612c06f0acd78447b44c942fc0af4b0ae0bb6273",
+        "0x40ef7202cd979e5a5a1f419ce34092ee603b5f263025730f1822c4fb3525139c",
+        "0xdac1546344d3bef66617e3d7f5618827aa5aeab1e2c0c1da08ff81f8b571d8b0",
+        "0x5e29cb9dec0fadb06955447cb0457df328f469c34284b4c7e5215e9c61e16f6a",
+        "0x118dc01b3dca09fb5f87f4c33b078bef1e685562bac82a7ec456a34a2054172b",
+        "0x5351ded08146b952211eb473de23e5fa7e35ac518b4eee36d1541f759a688180",
+        "0x5bb2f169cda1beb09c834a52cc69b6eadfceb0511f4e1a56af33ed5764d5d561"
+      ]
+    },
+    {
+      "run": 16,
+      "timestamp": 1777027767,
+      "task": "ArcReflex deterministic judge scenario #3",
+      "task_id": "judge_1777027758_f9f1d8",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0xeb6b050cddee5cb27ccf02420b3e2f08c4e8d709db16aa7b362ec735a226fadf",
+        "0x9468361de08c6dd18f66f5af17e7c1bffab4069a573840ac477858e2ad913e06",
+        "0x424a2ffdfa06450e249d061f16320e6115a20a5325f3f539c849bf0d62a75bfe",
+        "0x870662283dc433f722087add2e63bcab79bab5afbd5a3e92e95de8c930a5c04f",
+        "0x220102a14e71fbbfee8bf425aa54d2c8c993d856d1800c37a8cad779d548725b",
+        "0xbcae323d0bc56de24beef07d1a254415aaa0e8cd05a62559ad8accd3f37de29d",
+        "0x8e7574b2c0ead62e8230c19851a9110fe5e44ea0aa280ea67dbadf1b90f66180",
+        "0x404a6737322003ba5525f1dc56cb50769cf976ff41423b76589b1944270cc0f1"
+      ]
+    },
+    {
+      "run": 17,
+      "timestamp": 1777027785,
+      "task": "ArcReflex deterministic judge scenario #1",
+      "task_id": "judge_1777027775_acbb26",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0xd184eb2ce457dcb1257f2e2950b01c6a621471cf48ff5b5fa3eb86f1615fe70b",
+        "0xf4139e2795c437e727a9d5a076ceb2cdb778269e6a6568d8b921a4759cb5ad7e",
+        "0x07eb97cba195cc6fbb63a4fd2fc1a3a0990af27e86cc3bc132df86d7bda36483",
+        "0x721f0a29ddbdb18ff88226d9c3cc012c9f192c4f18f2b53ef8f790ec1c22f9d5",
+        "0x4ed8c7f160cd493a2bfb421db05553ab82c83ca14b525efeb86894d0d2a25a57",
+        "0xb5661f3803997992e105d73e8d40040b02416e26b59db6402c49bce0b4ddfe23",
+        "0x547d395aa093be14108aa4e17bd822009fda8ecb66993b86d2ea7222f7cb1f9a",
+        "0xb555a6a2cf0ed439fe41eb4a257484800a6edc28f36de1158c5b1a3f480cf980"
+      ]
+    },
+    {
+      "run": 18,
+      "timestamp": 1777027794,
+      "task": "ArcReflex deterministic judge scenario #2",
+      "task_id": "judge_1777027785_f8912a",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0xf499ae3b11d4c0f16220c9487e80a7c4468d3b6e7aa35d28e214a9153cf92253",
+        "0xc400196f350b21f3727b988d413f20adcb9a39c0c1a22ce09760e3a67188c107",
+        "0x6386f28bdbb5840f6916a66962981accc97853b6c1e89ba87d9c083150645308",
+        "0x71d19c92f2525592e4fa32f01ffa7943545dedbfc5721a3473ea3e41d4e3d751",
+        "0xb506ffb16156523efed346eae129590052c8e0bb9272835ffa5f898758d124b7",
+        "0x7b7e58e808df5e6e5e3fa62cbd36bd5dd8baced734148f4b97ccd475ff4f3776",
+        "0xa255292bc21ad5a187a722f585f13b61b4db0612d6338d88f25b457b7291d8c2",
+        "0x2f04e21623024637b99b965109cfc0f8f2a45e47f5eb8e76636c7f3af847dfd2"
+      ]
+    },
+    {
+      "run": 19,
+      "timestamp": 1777027804,
+      "task": "ArcReflex deterministic judge scenario #3",
+      "task_id": "judge_1777027794_d669ae",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x0a985ef4a34321dd80f29d1730806bde54d7927e4b283ff0e4da9e027df3d2dd",
+        "0xd95efaba6fed2a69ee587aba12e550a7edabec32f8f85762bd76f8d6b2351979",
+        "0xaa5a74c3e725e4c8593fa15938898a5548ca1d3f94f5f3e80bd17ed0ddf24b5f",
+        "0xe1852a673960aa680eb92bbbad7644f612372bd655494b37b4e1ae7a99dcff61",
+        "0xfac221517fa73f7e8af34dc77ebe0770b94518a4f43203f4f56a17af8059198a",
+        "0x1eb6d46f579cfb53b2a25ad58d0bdaff410e8336dc361def6113a6d81f9c4c19",
+        "0x7d9db9f810e843e10950acfb0492f34a0067c1e94106e9cc3874e0d04ad65570",
+        "0x4c818d964c063a3fe0af3f4c647e30d1bb9f9a6c49c708d42146ac2a19b0e4d9"
+      ]
+    },
+    {
+      "run": 20,
+      "timestamp": 1777027934,
+      "task": "ArcReflex deterministic judge scenario #1",
+      "task_id": "judge_1777027924_cc9974",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x4536434a117d764c0cf961ad8885a27010f0f7f26c7ebb975d5b01be3be9fb3b",
+        "0x55a51d4ae0e16921d67c0aba545eb4e7f5a270027305f6b9a4af97c12325d3bb",
+        "0x1951b26d2aff2f940e31fc48573e5638f59332ece8885cd33f4b36cc85b4698c",
+        "0x7d49a9f6eedc232a6dfb578608fd0721322daad58434de926034f30074bf9de8",
+        "0x923a829d480d3cb9e8363d614981445e74342e5645cc07163cc4a3513dbfbc4f",
+        "0xece3e2cca1bedb51f2b2c8979d3ac7310b7ebb7c0ce3d4bd032984df1f1fbf57",
+        "0x87b65866e41950f17f7e266f1284099630086e985a757d327b0922391b1443a4",
+        "0xe4ad622fa89da0c354259599e1ebfa2d223b3601af6670ae579f510a19f18791"
+      ]
+    },
+    {
+      "run": 21,
+      "timestamp": 1777027943,
+      "task": "ArcReflex deterministic judge scenario #2",
+      "task_id": "judge_1777027934_16edc6",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0xff71098be0cfee9835630fea116c4cabb7225c0576d87cc6777a51b4c91a19c4",
+        "0x0fa526e5e050ffdf62f55c173aff11893a4569ea70f8e78a41df95fdbffab507",
+        "0xd8bda6afe425e7e372c983c48edff9e0ac50303e44e8e16b105075b28092ea5b",
+        "0x5fe9623646a867b828674893e76c4b27eb662f28fdfc622949644e47486a5e60",
+        "0x0ebf2e65f810baa31355416999afc25a1b73b5647a509bad3f0507ba759ae968",
+        "0xbe54d7085dbe0b7f32128e01fd49a4dc3332c5506fb66b67802925f1e225e049",
+        "0x6b275353589cf31cc813991ff695255fca4198a74f63a2940b3bf5acd8f97922",
+        "0x83571b152a382675de1ce8cdb8bc2956583021a3943fd02157e05c31b68a5284"
+      ]
+    },
+    {
+      "run": 22,
+      "timestamp": 1777027953,
+      "task": "ArcReflex deterministic judge scenario #3",
+      "task_id": "judge_1777027943_94a71a",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x627ddb4bcb70c68659559e34b82c6106e5f0ca5c3d1da3fbb792b25b83a207f8",
+        "0xd84aa3ac753b70ee18fe36be3e1141de1f109fcea043465a8f80545f2bddd578",
+        "0xabff79185e4806c58a2a33695f10b8e9a98580903d91cb7cab01fd529028a0cb",
+        "0xcce1542968d57ee84959d0a997a3c2e5f5d47e76f6dcdbbb3673e61e220b5f1e",
+        "0x2be238692235099fc4fad2aaf89b99959952e349ab90b60f54ee56e70100318e",
+        "0x8aa22ea89b01d28c60f839c636d3bce89816c5a04963083b0b07c85994036fa9",
+        "0xf51dea4cb4ec7b763352f5972d8cf8503e63ae9ab4a9f38ad6fa300e36f2b954",
+        "0xd3d1ef5d482b3562d5524d6d44fea034eecaad822de84824972ecd75de5efacf"
+      ]
+    },
+    {
+      "run": 23,
+      "timestamp": 1777028161,
+      "task": "ArcReflex deterministic judge scenario #1",
+      "task_id": "judge_1777028152_6355f1",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x671d886655fd165ba7921859ef498717ee5428ac0cd4a0ab9c7c8a3dece8ef1a",
+        "0xe74b49883dfdfb448084660d6636390d7c02dac68b3360081fe54831e0f61478",
+        "0x8cfe3c4640016c1535d3030ef56f873223b9c6f02fd98a7a31b47a1efe91387c",
+        "0x14cdebda1efe45ca61734ea78ee09eb11d5c44319ba10b922050fd0564dfeea2",
+        "0xe9153d125c17619cc0a5aacb793edce5bc3460195d6995f25cec29aae0495b2e",
+        "0x4d5416076923c25d0443c49b577c8d12bebb531277f4211db64cf8b6953df586",
+        "0xb3a047e3605f39425bff28e5f0ed371ea0a8695917bad41e6601873d03e3a2c8",
+        "0x3fac2f25a4264d2faa53f7ffc4a30cf92050e5390f60404ebe161fbe8428728e"
+      ]
+    },
+    {
+      "run": 24,
+      "timestamp": 1777028171,
+      "task": "ArcReflex deterministic judge scenario #2",
+      "task_id": "judge_1777028161_6211ce",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x961e3e7f9d6ff07cb75a8fd67e176ffea01c815774d2a1e8b392038f0a6372cc",
+        "0xed1d020b00bc63a3e08eaa0caf2d207e0fc53903b9567524fcd7d34b7633f010",
+        "0xce7cdeb916735554b6e53471d58e758a957b32514cd4316ebfe197a87e020368",
+        "0xaed041d1503dd2b1374b71bd490ad73f253f096ef9deed03b616d62d1b9234fd",
+        "0xca477b70c041e09b26cb3fe4ed4257c3470bb37f647b54184c2074f8036c5c63",
+        "0x9c75d91ba48216dee3616fa22d1a27584f4e1ebff7d870480df7e0912017fa62",
+        "0xf269ce9425bc2d73eb18bf9c9081f62c92be079fb7474d182610a7de3e048bc7",
+        "0x5a89d6b22c1e788326bae03929f42d1cecbcf5ca6e8aad913e670448f4f48c5b"
+      ]
+    },
+    {
+      "run": 25,
+      "timestamp": 1777028181,
+      "task": "ArcReflex deterministic judge scenario #3",
+      "task_id": "judge_1777028171_6561d3",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x908c8a92dff7c60a072ff3f7ded59a8c1fdbd38874f8fc9dd756756d37750c72",
+        "0x59fbf1e4b5df467126a9f4511bf03c2e7579555a209b3ffd1cef836e9d3d8a8b",
+        "0x104c68b49c46c44d5f87b6886dc3838c3b6e58c0a944e4ba8b6f47fc6010d649",
+        "0xae13fd6c91dc35ef470eb628912dfc0e8aba2ce9e377a0ccdcd1abfccc3c1efd",
+        "0x5bfdbd1a841d82b3d308c3cce4b2401c5194d0c7c6c1100a98b29cfe4b1126a2",
+        "0xdcdd7fa9bcc6ee8c80aed0d55bf5a6bdf426613c0fa8b7169d064d986702e18c",
+        "0x2bfc29ec89f318d930c96a09bf98043029d99ded1ab22e2e0bb10891046750d6",
+        "0xecf720e56aca4740b1b77596957781aa95244e99289cab233dca537bb7271498"
+      ]
     }
   ],
   "highlight_txs": {
@@ -54,9 +494,9 @@
     "show_in_video": []
   },
   "gas_proof": {
-    "total_transactions": null,
-    "arc_gas_paid_usdc": null,
-    "ethereum_equivalent_usdc": null,
-    "ratio": null
+    "total_transactions": 225,
+    "arc_gas_paid_usdc": 0.000225,
+    "ethereum_equivalent_usdc": 477.0,
+    "ratio": 2120000.0
   }
 }
