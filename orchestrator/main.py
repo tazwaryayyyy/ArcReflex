@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import subprocess
 import time
@@ -24,19 +25,44 @@ app.add_middleware(
 
 ORCHESTRATOR_WALLET = os.getenv(
     "ORCHESTRATOR_WALLET", "0x000000000000000000000000000000000000000A")
+logger = logging.getLogger(__name__)
 
 
 @app.get("/")
 def root(): return {"status": "ok", "service": "orchestrator"}
 
 
-ORCHESTRATOR_KEY = os.getenv("ORCHESTRATOR_PRIVKEY", "0x" + "a" * 64)
+ORCHESTRATOR_KEY = os.getenv("ORCHESTRATOR_PRIVKEY", "").strip()
 QUALITY_THRESHOLD = float(os.getenv("QUALITY_THRESHOLD", "0.70"))
 EVIDENCE_PATH = Path(os.getenv("EVIDENCE_PATH", "evidence.json"))
 JUDGE_ARTIFACT_DIR = Path(os.getenv("JUDGE_ARTIFACT_DIR", "artifacts/judge"))
 REPUTATION_PENALTY_ON_SWITCH = int(
     os.getenv("REPUTATION_PENALTY_ON_SWITCH", "15"))
 MIN_AGENT_REPUTATION = int(os.getenv("MIN_AGENT_REPUTATION", "10"))
+_ALLOW_INSECURE_DEMO = os.getenv(
+    "ARCREFLEX_ALLOW_INSECURE_DEMO", "false").lower() == "true"
+
+
+def _validate_runtime_config() -> None:
+    """Fail fast on risky finals-demo misconfiguration."""
+    if not ORCHESTRATOR_KEY:
+        raise RuntimeError("ORCHESTRATOR_PRIVKEY is required")
+    if ORCHESTRATOR_KEY == "0x" + "a" * 64:
+        raise RuntimeError(
+            "Refusing unsafe default ORCHESTRATOR_PRIVKEY. Set a real private key.")
+
+    key_body = ORCHESTRATOR_KEY[2:] if ORCHESTRATOR_KEY.startswith(
+        "0x") else ORCHESTRATOR_KEY
+    if len(key_body) != 64 or any(c not in "0123456789abcdefABCDEF" for c in key_body):
+        raise RuntimeError("ORCHESTRATOR_PRIVKEY must be a 32-byte hex key")
+
+    if _ALLOW_INSECURE_DEMO and not os.getenv("ARCREFLEX_DEMO_ACK"):
+        raise RuntimeError(
+            "ARCREFLEX_ALLOW_INSECURE_DEMO=true requires ARCREFLEX_DEMO_ACK to be set"
+        )
+
+
+_validate_runtime_config()
 
 # --- Groq LLM quality scoring (inline, no agent service needed) ---
 _GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
@@ -430,7 +456,6 @@ class TaskExecutor:
                     # If one call fails, skip further remote calls for this agent
                     # in the current run to avoid repeated timeout penalties.
                     unavailable_filter_agents.add(current_filter)
-                    pass  # fall through to Groq/heuristic below
 
             # Proactively call Groq on sampled items regardless of agent outcome.
             # This ensures live LLM inference appears in bundles even when agents are unreachable.
@@ -713,7 +738,23 @@ async def submit_task(body: dict):
     judge_state.current_task_state = "running"
     judge_state.current_task_id = task_id
     judge_state.current_task_text = task_text
-    asyncio.create_task(task_executor.execute(task_id, task_text))
+
+    async def _run_task_with_fail_state() -> None:
+        try:
+            await task_executor.execute(task_id, task_text)
+        except (RuntimeError, ValueError, KeyError, OSError, httpx.HTTPError) as exc:
+            logger.exception("Background task failed: %s", task_id)
+            if judge_state.current_task_id == task_id:
+                judge_state.current_task_state = "failed"
+            await payment_client.broadcast({
+                "type": "task_failed",
+                "payload": {
+                    "task_id": task_id,
+                    "error": f"{type(exc).__name__}: {exc}",
+                },
+            })
+
+    asyncio.create_task(_run_task_with_fail_state())
 
     _ws_url = os.getenv("VITE_WS_URL") or os.getenv(
         "WS_URL", "ws://localhost:8000/ws")
@@ -771,7 +812,7 @@ async def groq_test():
             raw_status = resp.status_code
             raw_body = resp.text[:400]
             resp.raise_for_status()
-    except Exception as exc:
+    except (httpx.HTTPError, httpx.TimeoutException, KeyError, ValueError) as exc:
         raw_error = f"{type(exc).__name__}: {exc}"
     return {
         "groq_key_set": True,
@@ -824,7 +865,7 @@ async def judge_run_sync(body: dict):
             red_team_degrade_at=red_team_degrade_at,
             red_team_mode=red_team_mode,
         )
-    except Exception as exc:
+    except (RuntimeError, ValueError, KeyError, OSError, httpx.HTTPError) as exc:
         judge_state.current_task_state = "failed"
         return JSONResponse(
             {

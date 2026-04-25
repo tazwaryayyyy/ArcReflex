@@ -32,6 +32,8 @@ USDC_ADDRESS = os.getenv(
     "USDC_ADDRESS", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
 ALLOW_INSECURE_DEMO = os.getenv(
     "ARCREFLEX_ALLOW_INSECURE_DEMO", "false").lower() == "true"
+ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK = os.getenv(
+    "ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK", "false").lower() == "true"
 
 
 # ── Data Models ───────────────────────────────────────────────────────────────
@@ -185,11 +187,13 @@ class NanopaymentClient:
         """
         try:
             from eth_account import Account
+            from eth_account.messages import encode_typed_data
 
-            signed = Account.sign_typed_data(
-                private_key=self.private_key,
-                full_message=structured_data,
+            signer = Account.from_key(  # pylint: disable=no-value-for-parameter
+                self.private_key
             )
+            signable = encode_typed_data(full_message=structured_data)
+            signed = signer.sign_message(signable)
             r = "0x" + signed.r.to_bytes(32, "big").hex()
             s = "0x" + signed.s.to_bytes(32, "big").hex()
             return signed.v, r, s
@@ -222,13 +226,14 @@ class NanopaymentClient:
         }
 
         if not self.api_key:
-            if ALLOW_INSECURE_DEMO:
+            if ALLOW_INSECURE_DEMO and ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK:
                 # No Circle API key — return a deterministic demo hash immediately
                 # so local UI simulations work without any external credentials.
                 return self._demo_tx_hash(auth)
             raise RuntimeError(
                 "CIRCLE_API_KEY is required for submission mode. "
-                "Set ARCREFLEX_ALLOW_INSECURE_DEMO=true only for local UI simulation."
+                "For local-only simulation, also set "
+                "ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=true."
             )
 
         try:
@@ -249,12 +254,12 @@ class NanopaymentClient:
                         "Circle Gateway response missing a valid transactionHash")
                 return tx_hash
         except httpx.HTTPStatusError as e:
-            if ALLOW_INSECURE_DEMO:
+            if ALLOW_INSECURE_DEMO and ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK:
                 return self._demo_tx_hash(auth)
             raise RuntimeError(
                 f"Circle Gateway rejected authorization: {e.response.text}") from e
         except httpx.RequestError as e:
-            if ALLOW_INSECURE_DEMO:
+            if ALLOW_INSECURE_DEMO and ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK:
                 return self._demo_tx_hash(auth)
             raise RuntimeError(f"Circle Gateway unreachable: {e}") from e
 

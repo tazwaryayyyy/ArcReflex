@@ -487,6 +487,66 @@
         "0x2bfc29ec89f318d930c96a09bf98043029d99ded1ab22e2e0bb10891046750d6",
         "0xecf720e56aca4740b1b77596957781aa95244e99289cab233dca537bb7271498"
       ]
+    },
+    {
+      "run": 26,
+      "timestamp": 1777028854,
+      "task": "ArcReflex deterministic judge scenario #1",
+      "task_id": "judge_1777028844_edca59",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0xa085e75679c0ba29c9b8cacd651b30683d18f6ce7d85d39d239f88a4887c0546",
+        "0xe913355a124637762279af7e85b0b55eb9b83846a37dd39c6901b33a9a7e5594",
+        "0x75a456ecad98e0e849b7f600028f31500482ac52780341408946640a80eca2a2",
+        "0xb8f916cd6a53fe492a6e3a0c7daf270673a8706b596ee18f272344f722e6ee28",
+        "0x6a1e8e4267502f2f473325bf65041b640a196cc4eb9546e5f6728be028587423",
+        "0xb7f13ac5eafd04cca9b1d279638b475c5982d7581a7fa3f5b3365383a15e9511",
+        "0x5d22a6f25fb6785606e498d43c76fa122d47c14350eac5350542a3fe7c89dc56",
+        "0x9dfc2a4c55c2c0061b21bce9706493742f549b7b7a58b299e5f2ca970db09072"
+      ]
+    },
+    {
+      "run": 27,
+      "timestamp": 1777028863,
+      "task": "ArcReflex deterministic judge scenario #2",
+      "task_id": "judge_1777028854_07c625",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x4e1ef39f6e7244b9af37df09d21e8677c554249273a00ca1ce9dfb00e9cedf0f",
+        "0x1e9e7435c03d9a9f1b94003281c05d7803c42b8041499b204056d80126f961c1",
+        "0x58cfb9115e49ce09b77e34d318595893c6f26aa2c55bc8209b9b47e080c5ad84",
+        "0xd79dbfbb89d96a4e0a50ab9bf911a44c00e7c046142b8d1d662d23726856fd30",
+        "0xe882fdb47eb49c16c6ea824df89eb4e9ec3a829090b33c6f72021e02d8c8cac8",
+        "0xff3221015f025c7e47cc063a6669773d2c912ab109f0509452aaeb568a7d6472",
+        "0x5ba9973ced37b1fb92eb5fd87bf6c03ae7be3dd356445cea8a7fde06f129444d",
+        "0x7152fda183bb990d36b7ad690cb1a44e9ffa11c6f7fc232c34c52f681c175ee8"
+      ]
+    },
+    {
+      "run": 28,
+      "timestamp": 1777028872,
+      "task": "ArcReflex deterministic judge scenario #3",
+      "task_id": "judge_1777028863_4c88df",
+      "total_tx": 226,
+      "released": 225,
+      "withheld": 1,
+      "total_usdc": 0.02668,
+      "sample_tx_hashes": [
+        "0x39e49c2fb2810288154177ec8d4f44749d63772183520df259d83cae32cb7884",
+        "0x81c062eb5201b813d9e4439e17fa582f33c062fb7c7bb7f2d19e8bedbf17fb3f",
+        "0x4594f731d5d17567a89c4f8f755e29ae1293fb25d7d8af6f0b966198e1ad6665",
+        "0x8f32fd8750e92e3060fed734b9d731c991b5fb64b658867325f810535015d9ef",
+        "0xe0011ae6b65df6aa767b36d19ecf59fc28f9389a241b28a8deef409dce73c6c6",
+        "0x0d293afd172ef15e68aace474d7fb91a0027f188407af9940595909eaecb70ba",
+        "0xaeeb266562e2a3662890d3076c5add51886094fed0bf134d5d426ce0d198c923",
+        "0xd0f12f37d3a93905b3dbd160a420646f1acbea85b5271a54b2e16d4c4a9ec14f"
+      ]
     }
   ],
   "highlight_txs": {
