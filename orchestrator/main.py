@@ -41,6 +41,8 @@ REPUTATION_PENALTY_ON_SWITCH = int(
 MIN_AGENT_REPUTATION = int(os.getenv("MIN_AGENT_REPUTATION", "10"))
 _ALLOW_INSECURE_DEMO = os.getenv(
     "ARCREFLEX_ALLOW_INSECURE_DEMO", "false").lower() == "true"
+_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK = os.getenv(
+    "ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK", "false").lower() == "true"
 
 
 def _validate_runtime_config() -> None:
@@ -56,9 +58,14 @@ def _validate_runtime_config() -> None:
     if len(key_body) != 64 or any(c not in "0123456789abcdefABCDEF" for c in key_body):
         raise RuntimeError("ORCHESTRATOR_PRIVKEY must be a 32-byte hex key")
 
-    if _ALLOW_INSECURE_DEMO and not os.getenv("ARCREFLEX_DEMO_ACK"):
+    if _ALLOW_INSECURE_DEMO and _ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK and not os.getenv("ARCREFLEX_DEMO_ACK"):
         raise RuntimeError(
-            "ARCREFLEX_ALLOW_INSECURE_DEMO=true requires ARCREFLEX_DEMO_ACK to be set"
+            "ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=true requires ARCREFLEX_DEMO_ACK to be set"
+        )
+
+    if _ALLOW_INSECURE_DEMO and not os.getenv("ARCREFLEX_DEMO_ACK"):
+        logger.warning(
+            "ARCREFLEX_ALLOW_INSECURE_DEMO=true without ARCREFLEX_DEMO_ACK; booting in demo mode without synthetic settlement fallback"
         )
 
 

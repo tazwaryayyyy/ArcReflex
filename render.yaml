@@ -7,6 +7,11 @@ services:
     rootDir: .
     buildCommand: pip install -r requirements.render.txt
     startCommand: uvicorn orchestrator.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ARCREFLEX_ALLOW_INSECURE_DEMO
+        value: "false"
+      - key: ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK
+        value: "false"
     autoDeploy: true
     healthCheckPath: /health
 

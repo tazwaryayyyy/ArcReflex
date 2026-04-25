@@ -34,7 +34,6 @@ Use this page as the single entry point during judging.
 ## Judge Q&A and Pitch Support
 
 - [Judge Hard Q&A](JUDGE_HARD_QA.md)
-- [Pitch 90s](PITCH_90S.md)
 - [Economics Slide](ECONOMICS_SLIDE.md)
 
 ## Submission-Ready Definition

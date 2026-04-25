@@ -101,6 +101,20 @@ Examples for `<service_module>`:
 - `agents.filter_b.main`
 - `agents.factcheck.main`
 
+Render env matrix for the orchestrator:
+- Finals-safe deploy: `ORCHESTRATOR_PRIVKEY=<real 32-byte hex>`, `CIRCLE_API_KEY=<real key>`, `ARCREFLEX_ALLOW_INSECURE_DEMO=false`, `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=false`
+- Normal demo mode: `ORCHESTRATOR_PRIVKEY=<real 32-byte hex>`, `ARCREFLEX_ALLOW_INSECURE_DEMO=true`, `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=false`
+- Local-only synthetic settlement simulation: `ORCHESTRATOR_PRIVKEY=<real 32-byte hex>`, `ARCREFLEX_ALLOW_INSECURE_DEMO=true`, `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=true`, `ARCREFLEX_DEMO_ACK=1`
+
+Recommended Render default:
+- Do not add `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=true` unless you explicitly want fake local-only settlement hashes.
+- The included `render.yaml` keeps both demo fallback flags off by default for the orchestrator service.
+
+What `ARCREFLEX_DEMO_ACK` does:
+- It is an explicit acknowledgment flag for unsafe demo-only behavior.
+- It is only required when synthetic settlement fallback is enabled.
+- If `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=false`, you do not need `ARCREFLEX_DEMO_ACK`.
+
 ## Vercel Frontend Notes
 
 Use Vercel with Vite preset and set these environment variables:
@@ -208,6 +222,8 @@ Key environment variables used by payment/x402 flows include:
 - `MIN_AGENT_REPUTATION`
 - `ARCREFLEX_STRICT_X402`
 - `ARCREFLEX_ALLOW_INSECURE_DEMO`
+- `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK`
+- `ARCREFLEX_DEMO_ACK`
 - `ARCREFLEX_LIVE_INFERENCE`
 - `ARCREFLEX_MODEL_API_URL`
 - `ARCREFLEX_MODEL_API_KEY`
@@ -285,7 +301,6 @@ Additional judge materials:
 - `docs/EXTERNAL_VALIDATION.md`
 - `docs/RELIABILITY_PROOF.md`
 - `docs/JUDGE_HARD_QA.md`
-- `docs/PITCH_90S.md`
 
 ## License
 
