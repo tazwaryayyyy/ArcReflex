@@ -131,10 +131,16 @@ Run the full deterministic flow with red-team degradation, automatic failover, a
 npm run judge:run
 ```
 
-One-command run + independent verification:
+One-command run + independent verification (hits Render — no local server needed):
 
 ```bash
 npm run judge:prove
+```
+
+Same thing against a local orchestrator:
+
+```bash
+npm run judge:prove:local
 ```
 
 Five-run zero-failure rehearsal check:
@@ -143,10 +149,14 @@ Five-run zero-failure rehearsal check:
 npm run judge:rehearse
 ```
 
-Equivalent direct command:
+Equivalent direct commands:
 
 ```bash
-python judge_run.py --runs 3 --base-url http://localhost:8000
+# Render (default, no local server required)
+python judge_run.py --runs 3 --base-url https://arcreflex-orchestrator-7ryd.onrender.com --timeout-seconds 300 --clean-output
+
+# Local orchestrator
+python judge_run.py --runs 3 --base-url http://localhost:8000 --clean-output
 ```
 
 Outputs are written to `artifacts/judge/`:
@@ -178,8 +188,7 @@ ArcReflex delivers **quality-gated economic enforcement per agent action with ve
 
 Use this list in front of judges for fast validation:
 
-1. Start backend services and ensure orchestrator health endpoint responds.
-2. Run one command:
+1. Run one command (no local server required — targets the Render orchestrator):
 
 ```bash
 npm run judge:prove

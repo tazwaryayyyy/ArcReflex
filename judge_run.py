@@ -85,7 +85,11 @@ def ensure_local_orchestrator(
     compose_cmd = _compose_command()
     if not compose_cmd:
         raise RuntimeError(
-            "docker is not installed or not on PATH, and orchestrator is not reachable on localhost"
+            "Orchestrator is not running on localhost:8000 and Docker is not available to start it automatically.\n"
+            "Start it manually first:\n"
+            "  Windows:  $env:ARCREFLEX_ALLOW_INSECURE_DEMO='true'; .venv\\Scripts\\uvicorn orchestrator.main:app --host 0.0.0.0 --port 8000\n"
+            "  Mac/Linux: ARCREFLEX_ALLOW_INSECURE_DEMO=true .venv/bin/uvicorn orchestrator.main:app --host 0.0.0.0 --port 8000\n"
+            "Then re-run: npm run judge:prove"
         )
 
     cmd = compose_cmd + [
