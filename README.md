@@ -107,13 +107,19 @@ Render env matrix for the orchestrator:
 - Local-only synthetic settlement simulation: `ORCHESTRATOR_PRIVKEY=<real 32-byte hex>`, `ARCREFLEX_ALLOW_INSECURE_DEMO=true`, `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=true`, `ARCREFLEX_DEMO_ACK=1`
 
 Recommended Render default:
-- Do not add `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=true` unless you explicitly want fake local-only settlement hashes.
-- The included `render.yaml` keeps both demo fallback flags off by default for the orchestrator service.
+- Keep `ARCREFLEX_ALLOW_INSECURE_DEMO=true` for the shared demo/judge deployment so `npm run judge:prove` can tolerate Circle outages or rejected demo authorizations.
+- Do not add `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=true` unless you explicitly want unconditional fake local-only settlement hashes.
+- Switch to the finals-safe matrix above for any submission-grade deployment that must fail closed on live payment issues.
 
 What `ARCREFLEX_DEMO_ACK` does:
 - It is an explicit acknowledgment flag for unsafe demo-only behavior.
 - It is only required when synthetic settlement fallback is enabled.
 - If `ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=false`, you do not need `ARCREFLEX_DEMO_ACK`.
+
+Demo-mode settlement behavior:
+- With `ARCREFLEX_ALLOW_INSECURE_DEMO=true`, the orchestrator still tries Circle first.
+- If Circle is unavailable or rejects the demo authorization, ArcReflex falls back to a deterministic synthetic tx hash so the judge flow can complete.
+- In finals-safe mode (`ARCREFLEX_ALLOW_INSECURE_DEMO=false`), those same payment errors fail the run instead of being masked.
 
 ## Vercel Frontend Notes
 

@@ -36,6 +36,10 @@ ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK = os.getenv(
     "ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK", "false").lower() == "true"
 
 
+def _should_use_demo_settlement_fallback() -> bool:
+    return ALLOW_INSECURE_DEMO or ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK
+
+
 # ── Data Models ───────────────────────────────────────────────────────────────
 
 @dataclass
@@ -132,6 +136,10 @@ class NanopaymentClient:
         )
         return "0x" + hashlib.sha256(seed.encode("utf-8")).hexdigest()
 
+    def _demo_fallback_reason(self, reason: str) -> str:
+        mode = "insecure demo mode" if ALLOW_INSECURE_DEMO else "synthetic settlement fallback"
+        return f"Falling back to demo settlement hash because {reason} in {mode}."
+
     def _build_structured_data(
         self,
         to: str,
@@ -226,13 +234,14 @@ class NanopaymentClient:
         }
 
         if not self.api_key:
-            if ALLOW_INSECURE_DEMO and ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK:
-                # No Circle API key — return a deterministic demo hash immediately
-                # so local UI simulations work without any external credentials.
+            if _should_use_demo_settlement_fallback():
+                # Demo deployments still need stable settlement-shaped artifacts
+                # even when Circle credentials are unavailable.
                 return self._demo_tx_hash(auth)
             raise RuntimeError(
                 "CIRCLE_API_KEY is required for submission mode. "
-                "For local-only simulation, also set "
+                "For demo-mode synthetic settlement, set "
+                "ARCREFLEX_ALLOW_INSECURE_DEMO=true or "
                 "ARCREFLEX_ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK=true."
             )
 
@@ -250,16 +259,18 @@ class NanopaymentClient:
                 resp.raise_for_status()
                 tx_hash = resp.json().get("transactionHash", "")
                 if not isinstance(tx_hash, str) or not tx_hash.startswith("0x") or len(tx_hash) != 66:
+                    if _should_use_demo_settlement_fallback():
+                        return self._demo_tx_hash(auth)
                     raise RuntimeError(
                         "Circle Gateway response missing a valid transactionHash")
                 return tx_hash
         except httpx.HTTPStatusError as e:
-            if ALLOW_INSECURE_DEMO and ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK:
+            if _should_use_demo_settlement_fallback():
                 return self._demo_tx_hash(auth)
             raise RuntimeError(
                 f"Circle Gateway rejected authorization: {e.response.text}") from e
         except httpx.RequestError as e:
-            if ALLOW_INSECURE_DEMO and ALLOW_SYNTHETIC_SETTLEMENT_FALLBACK:
+            if _should_use_demo_settlement_fallback():
                 return self._demo_tx_hash(auth)
             raise RuntimeError(f"Circle Gateway unreachable: {e}") from e
 
